@@ -90,11 +90,11 @@ static LP_PeripheralGpio relay1 = {
 };
 
 // Timers
-static Timer led2BlinkOffOneShotTimer = {.period = { 0, 0 }, .name = "led2BlinkOffOneShotTimer", .handler = Led2OffHandler };
-static Timer networkConnectionStatusTimer = { .period = { 5, 0 }, .name = "networkConnectionStatusTimer", .handler = NetworkConnectionStatusHandler };
-static Timer measureSensorTimer = { .period = { 10, 0 }, .name = "measureSensorTimer", .handler = MeasureSensorHandler };
-static Timer resetDeviceOneShotTimer = {.period = { 0, 0 }, .name = "resetDeviceOneShotTimer", .handler = ResetDeviceHandler };
-static Timer realTimeCoreHeatBeatTimer = { .period = { 30, 0 }, .name = "rtCoreSend", .handler = RealTimeCoreHeartBeat };
+static LP_Timer led2BlinkOffOneShotTimer = {.period = { 0, 0 }, .name = "led2BlinkOffOneShotTimer", .handler = Led2OffHandler };
+static LP_Timer networkConnectionStatusTimer = { .period = { 5, 0 }, .name = "networkConnectionStatusTimer", .handler = NetworkConnectionStatusHandler };
+static LP_Timer measureSensorTimer = { .period = { 10, 0 }, .name = "measureSensorTimer", .handler = MeasureSensorHandler };
+static LP_Timer resetDeviceOneShotTimer = {.period = { 0, 0 }, .name = "resetDeviceOneShotTimer", .handler = ResetDeviceHandler };
+static LP_Timer realTimeCoreHeatBeatTimer = { .period = { 30, 0 }, .name = "rtCoreSend", .handler = RealTimeCoreHeartBeat };
 
 // Azure IoT Device Twins
 static LP_DeviceTwinBinding buttonPressed = { .twinProperty = "ButtonPressed", .twinType = LP_TYPE_STRING };
@@ -106,7 +106,7 @@ static LP_DirectMethodBinding resetDevice = { .methodName = "ResetMethod", .hand
 
 // Initialize Sets
 LP_PeripheralGpio* peripheralGpioSet[] = { &led2, &networkConnectedLed, &relay1 };
-Timer* timerSet[] = { &led2BlinkOffOneShotTimer, &networkConnectionStatusTimer, &resetDeviceOneShotTimer, &measureSensorTimer, &realTimeCoreHeatBeatTimer };
+LP_Timer* timerSet[] = { &led2BlinkOffOneShotTimer, &networkConnectionStatusTimer, &resetDeviceOneShotTimer, &measureSensorTimer, &realTimeCoreHeatBeatTimer };
 LP_DeviceTwinBinding* deviceTwinBindingSet[] = { &buttonPressed, &relay1DeviceTwin };
 LP_DirectMethodBinding* directMethodBindingSet[] = { &resetDevice };
 
@@ -245,7 +245,7 @@ static LP_DirectMethodResponseCode ResetDirectMethodHandler(JSON_Object* json, L
 		// Create Direct Method Response
 		snprintf(*responseMsg, responseLen, "%s called. Reset in %d seconds", directMethodBinding->methodName, seconds);
 
-		// Set One Shot Timer
+		// Set One Shot LP_Timer
 		period = (struct timespec){ .tv_sec = seconds, .tv_nsec = 0 };
 		lp_setOneShotTimer(&resetDeviceOneShotTimer, &period);
 
