@@ -20,14 +20,14 @@ struct _deviceTwinBinding {
 	void (*handler)(struct _deviceTwinBinding* deviceTwinBinding);
 };
 
-typedef struct _deviceTwinBinding LP_DeviceTwinBinding;
+typedef struct _deviceTwinBinding LP_DEVICE_TWIN_BINDING;
 
 void lp_twinCallback(DEVICE_TWIN_UPDATE_STATE updateState, const unsigned char* payload, size_t payloadSize, void* userContextCallback);
 void lp_deviceTwinsReportStatusCallback(int result, void* context);
 
-void lp_openDeviceTwinSet(LP_DeviceTwinBinding* deviceTwins[], size_t deviceTwinCount);
+void lp_openDeviceTwinSet(LP_DEVICE_TWIN_BINDING* deviceTwins[], size_t deviceTwinCount);
 void lp_closeDeviceTwinSet(void);
 
-void lp_openDeviceTwin(LP_DeviceTwinBinding* deviceTwinBinding);
-void lp_closeDeviceTwin(LP_DeviceTwinBinding* deviceTwinBinding);
-bool lp_deviceTwinReportState(LP_DeviceTwinBinding* deviceTwinBinding, void* state);
+void lp_openDeviceTwin(LP_DEVICE_TWIN_BINDING* deviceTwinBinding);
+void lp_closeDeviceTwin(LP_DEVICE_TWIN_BINDING* deviceTwinBinding);
+bool lp_deviceTwinReportState(LP_DEVICE_TWIN_BINDING* deviceTwinBinding, void* state);

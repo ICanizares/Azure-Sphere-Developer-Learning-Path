@@ -80,33 +80,33 @@ static const struct timespec led1BlinkIntervals[] = { {0, 125000000}, {0, 250000
 static const int led1BlinkIntervalsCount = NELEMS(led1BlinkIntervals);
 
 // GPIO Input Peripherals
-static LP_PeripheralGpio buttonA = { .pin = BUTTON_A, .direction = LP_INPUT, .initialise = lp_openPeripheralGpio, .name = "buttonA" };
-static LP_PeripheralGpio buttonB = { .pin = BUTTON_B, .direction = LP_INPUT, .initialise = lp_openPeripheralGpio, .name = "buttonB" };
+static LP_PERIPHERAL_GPIO buttonA = { .pin = BUTTON_A, .direction = LP_INPUT, .initialise = lp_openPeripheralGpio, .name = "buttonA" };
+static LP_PERIPHERAL_GPIO buttonB = { .pin = BUTTON_B, .direction = LP_INPUT, .initialise = lp_openPeripheralGpio, .name = "buttonB" };
 
 // GPIO Output PeripheralGpios
-static LP_PeripheralGpio led1 = {
+static LP_PERIPHERAL_GPIO led1 = {
 	.pin = LED1, .direction = LP_OUTPUT, .initialState = GPIO_Value_Low, .invertPin = true,
 	.initialise = lp_openPeripheralGpio, .name = "led1"
 };
-static LP_PeripheralGpio led2 = {
+static LP_PERIPHERAL_GPIO led2 = {
 	.pin = LED2, .direction = LP_OUTPUT, .initialState = GPIO_Value_Low, .invertPin = true,
 	.initialise = lp_openPeripheralGpio, .name = "led2"
 };
-static LP_PeripheralGpio networkConnectedLed = {
+static LP_PERIPHERAL_GPIO networkConnectedLed = {
 	.pin = NETWORK_CONNECTED_LED, .direction = LP_OUTPUT, .initialState = GPIO_Value_Low, .invertPin = true,
 	.initialise = lp_openPeripheralGpio, .name = "networkConnectedLed"
 };
 
 // Timers
-static LP_Timer led1BlinkTimer = { .period = { 0, 125000000 }, .name = "led1BlinkTimer", .handler = Led1BlinkHandler };
-static LP_Timer led2BlinkOffOneShotTimer = { .period = { 0, 0 }, .name = "led2BlinkOffOneShotTimer", .handler = Led2OffHandler };
-static LP_Timer buttonPressCheckTimer = { .period = { 0, 1000000 }, .name = "buttonPressCheckTimer", .handler = ButtonPressCheckHandler };
-static LP_Timer networkConnectionStatusTimer = { .period = { 5, 0 }, .name = "networkConnectionStatusTimer", .handler = NetworkConnectionStatusHandler };
-static LP_Timer measureSensorTimer = { .period = { 10, 0 }, .name = "measureSensorTimer", .handler = MeasureSensorHandler };
+static LP_TIMER led1BlinkTimer = { .period = { 0, 125000000 }, .name = "led1BlinkTimer", .handler = Led1BlinkHandler };
+static LP_TIMER led2BlinkOffOneShotTimer = { .period = { 0, 0 }, .name = "led2BlinkOffOneShotTimer", .handler = Led2OffHandler };
+static LP_TIMER buttonPressCheckTimer = { .period = { 0, 1000000 }, .name = "buttonPressCheckTimer", .handler = ButtonPressCheckHandler };
+static LP_TIMER networkConnectionStatusTimer = { .period = { 5, 0 }, .name = "networkConnectionStatusTimer", .handler = NetworkConnectionStatusHandler };
+static LP_TIMER measureSensorTimer = { .period = { 10, 0 }, .name = "measureSensorTimer", .handler = MeasureSensorHandler };
 
 // Initialize Sets
-LP_PeripheralGpio* peripheralGpioSet[] = { &buttonA, &buttonB, &led1, &led2, &networkConnectedLed };
-LP_Timer* timerSet[] = { &led1BlinkTimer, &led2BlinkOffOneShotTimer, &buttonPressCheckTimer, &networkConnectionStatusTimer, &measureSensorTimer };
+LP_PERIPHERAL_GPIO* peripheralGpioSet[] = { &buttonA, &buttonB, &led1, &led2, &networkConnectedLed };
+LP_TIMER* timerSet[] = { &led1BlinkTimer, &led2BlinkOffOneShotTimer, &buttonPressCheckTimer, &networkConnectionStatusTimer, &measureSensorTimer };
 
 
 int main(int argc, char* argv[]) {
@@ -189,7 +189,7 @@ static void MeasureSensorHandler(EventLoopTimer* eventLoopTimer) {
 /// <summary>
 /// Read Button PeripheralGpio returns pressed state
 /// </summary>
-static bool IsButtonPressed(LP_PeripheralGpio button, GPIO_Value_Type* oldState) {
+static bool IsButtonPressed(LP_PERIPHERAL_GPIO button, GPIO_Value_Type* oldState) {
 	bool isButtonPressed = false;
 	GPIO_Value_Type newState;
 

@@ -15,7 +15,7 @@ const char* _connectionString = NULL;
 
 const int maxPeriodSeconds = 5; // defines the max back off period for DoWork with lost network
 
-static LP_Timer cloudToDeviceTimer = {
+static LP_TIMER cloudToDeviceTimer = {
 	.period = { 0, 0 },			// one-shot timer
 	.name = "DoWork",
 	.handler = &AzureCloudToDeviceHandler

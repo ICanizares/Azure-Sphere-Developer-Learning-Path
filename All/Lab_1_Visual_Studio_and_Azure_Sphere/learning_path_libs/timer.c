@@ -1,6 +1,6 @@
 #include "timer.h"
 
-LP_Timer** _timers = NULL;
+LP_TIMER** _timers = NULL;
 size_t _timerCount = 0;
 EventLoop* eventLoop = NULL;
 
@@ -12,7 +12,7 @@ EventLoop* lp_getTimerEventLoop(void) {
 	return eventLoop;
 }
 
-bool lp_changeTimer(LP_Timer* timer, const struct timespec* period) {
+bool lp_changeTimer(LP_TIMER* timer, const struct timespec* period) {
 	if (timer->eventLoopTimer == NULL) { return false; }
 	timer->period.tv_nsec = period->tv_nsec;
 	timer->period.tv_sec = period->tv_sec;
@@ -21,7 +21,7 @@ bool lp_changeTimer(LP_Timer* timer, const struct timespec* period) {
 	return result == 0 ? true : false;
 }
 
-bool lp_startTimer(LP_Timer* timer) {
+bool lp_startTimer(LP_TIMER* timer) {
 	EventLoop* eventLoop = lp_getTimerEventLoop();
 	if (eventLoop == NULL) {
 		return false;
@@ -31,7 +31,7 @@ bool lp_startTimer(LP_Timer* timer) {
 		return true;
 	}
 
-	if (timer->period.tv_nsec == 0 && timer->period.tv_sec == 0) {  // Set up a disabled LP_Timer for oneshot or change timer
+	if (timer->period.tv_nsec == 0 && timer->period.tv_sec == 0) {  // Set up a disabled LP_TIMER for oneshot or change timer
 		timer->eventLoopTimer = CreateEventLoopDisarmedTimer(eventLoop, timer->handler);
 		if (timer->eventLoopTimer == NULL) {
 			return false;
@@ -48,14 +48,14 @@ bool lp_startTimer(LP_Timer* timer) {
 	return true;
 }
 
-void lp_stopTimer(LP_Timer* timer) {
+void lp_stopTimer(LP_TIMER* timer) {
 	if (timer->eventLoopTimer != NULL) {
 		DisposeEventLoopTimer(timer->eventLoopTimer);
 		timer->eventLoopTimer = NULL;
 	}
 }
 
-void lp_startTimerSet(LP_Timer* timerSet[], size_t timerCount) {
+void lp_startTimerSet(LP_TIMER* timerSet[], size_t timerCount) {
 	_timers = timerSet;
 	_timerCount = timerCount;
 
@@ -79,7 +79,7 @@ void lp_stopTimerEventLoop(void) {
 	}
 }
 
-bool lp_setOneShotTimer(LP_Timer* timer, const struct timespec* period) {
+bool lp_setOneShotTimer(LP_TIMER* timer, const struct timespec* period) {
 	EventLoop* eventLoop = lp_getTimerEventLoop();
 	if (eventLoop == NULL) {
 		return false;

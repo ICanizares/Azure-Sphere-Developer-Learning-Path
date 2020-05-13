@@ -66,8 +66,8 @@ static void Led2OffHandler(EventLoopTimer* eventLoopTimer);
 static void MeasureSensorHandler(EventLoopTimer* eventLoopTimer);
 static void NetworkConnectionStatusHandler(EventLoopTimer* eventLoopTimer);
 static void ResetDeviceHandler(EventLoopTimer* eventLoopTimer);
-static void DeviceTwinRelay1RateHandler(LP_DeviceTwinBinding* deviceTwinBinding);
-static LP_DirectMethodResponseCode ResetDirectMethodHandler(JSON_Object* json, LP_DirectMethodBinding* directMethodBinding, char** responseMsg);
+static void DeviceTwinRelay1RateHandler(LP_DEVICE_TWIN_BINDING* deviceTwinBinding);
+static LP_DirectMethodResponseCode ResetDirectMethodHandler(JSON_Object* json, LP_DIRECT_METHOD_BINDING* directMethodBinding, char** responseMsg);
 static void InterCoreHandler(char* msg);
 static void RealTimeCoreHeartBeat(EventLoopTimer* eventLoopTimer);
 
@@ -76,39 +76,39 @@ static const char cstrJsonEvent[] = "{\"%s\":\"occurred\"}";
 static const struct timespec led2BlinkPeriod = { 0, 300 * 1000 * 1000 };
 
 // GPIO Output PeripheralGpios
-static LP_PeripheralGpio led2 = {
+static LP_PERIPHERAL_GPIO led2 = {
 	.pin = LED2, .direction = LP_OUTPUT, .initialState = GPIO_Value_Low, .invertPin = true,
 	.initialise = lp_openPeripheralGpio, .name = "led2"
 };
-static LP_PeripheralGpio networkConnectedLed = {
+static LP_PERIPHERAL_GPIO networkConnectedLed = {
 	.pin = NETWORK_CONNECTED_LED, .direction = LP_OUTPUT, .initialState = GPIO_Value_Low, .invertPin = true,
 	.initialise = lp_openPeripheralGpio, .name = "networkConnectedLed"
 };
-static LP_PeripheralGpio relay1 = {
+static LP_PERIPHERAL_GPIO relay1 = {
 	.pin = RELAY, .direction = LP_OUTPUT, .initialState = GPIO_Value_Low, .invertPin = false,
 	.initialise = lp_openPeripheralGpio, .name = "relay1"
 };
 
 // Timers
-static LP_Timer led2BlinkOffOneShotTimer = {.period = { 0, 0 }, .name = "led2BlinkOffOneShotTimer", .handler = Led2OffHandler };
-static LP_Timer networkConnectionStatusTimer = { .period = { 5, 0 }, .name = "networkConnectionStatusTimer", .handler = NetworkConnectionStatusHandler };
-static LP_Timer measureSensorTimer = { .period = { 10, 0 }, .name = "measureSensorTimer", .handler = MeasureSensorHandler };
-static LP_Timer resetDeviceOneShotTimer = {.period = { 0, 0 }, .name = "resetDeviceOneShotTimer", .handler = ResetDeviceHandler };
-static LP_Timer realTimeCoreHeatBeatTimer = { .period = { 30, 0 }, .name = "rtCoreSend", .handler = RealTimeCoreHeartBeat };
+static LP_TIMER led2BlinkOffOneShotTimer = {.period = { 0, 0 }, .name = "led2BlinkOffOneShotTimer", .handler = Led2OffHandler };
+static LP_TIMER networkConnectionStatusTimer = { .period = { 5, 0 }, .name = "networkConnectionStatusTimer", .handler = NetworkConnectionStatusHandler };
+static LP_TIMER measureSensorTimer = { .period = { 10, 0 }, .name = "measureSensorTimer", .handler = MeasureSensorHandler };
+static LP_TIMER resetDeviceOneShotTimer = {.period = { 0, 0 }, .name = "resetDeviceOneShotTimer", .handler = ResetDeviceHandler };
+static LP_TIMER realTimeCoreHeatBeatTimer = { .period = { 30, 0 }, .name = "rtCoreSend", .handler = RealTimeCoreHeartBeat };
 
 // Azure IoT Device Twins
-static LP_DeviceTwinBinding buttonPressed = { .twinProperty = "ButtonPressed", .twinType = LP_TYPE_STRING };
-static LP_DeviceTwinBinding relay1DeviceTwin = { .twinProperty = "Relay1", .twinType = LP_TYPE_BOOL, .handler = DeviceTwinRelay1RateHandler };
-static LP_DeviceTwinBinding deviceResetUtc = { .twinProperty = "DeviceResetUTC", .twinType = LP_TYPE_STRING };
+static LP_DEVICE_TWIN_BINDING buttonPressed = { .twinProperty = "ButtonPressed", .twinType = LP_TYPE_STRING };
+static LP_DEVICE_TWIN_BINDING relay1DeviceTwin = { .twinProperty = "Relay1", .twinType = LP_TYPE_BOOL, .handler = DeviceTwinRelay1RateHandler };
+static LP_DEVICE_TWIN_BINDING deviceResetUtc = { .twinProperty = "DeviceResetUTC", .twinType = LP_TYPE_STRING };
 
 // Azure IoT Direct Methods
-static LP_DirectMethodBinding resetDevice = { .methodName = "ResetMethod", .handler = ResetDirectMethodHandler };
+static LP_DIRECT_METHOD_BINDING resetDevice = { .methodName = "ResetMethod", .handler = ResetDirectMethodHandler };
 
 // Initialize Sets
-LP_PeripheralGpio* peripheralGpioSet[] = { &led2, &networkConnectedLed, &relay1 };
-LP_Timer* timerSet[] = { &led2BlinkOffOneShotTimer, &networkConnectionStatusTimer, &resetDeviceOneShotTimer, &measureSensorTimer, &realTimeCoreHeatBeatTimer };
-LP_DeviceTwinBinding* deviceTwinBindingSet[] = { &buttonPressed, &relay1DeviceTwin };
-LP_DirectMethodBinding* directMethodBindingSet[] = { &resetDevice };
+LP_PERIPHERAL_GPIO* peripheralGpioSet[] = { &led2, &networkConnectedLed, &relay1 };
+LP_TIMER* timerSet[] = { &led2BlinkOffOneShotTimer, &networkConnectionStatusTimer, &resetDeviceOneShotTimer, &measureSensorTimer, &realTimeCoreHeatBeatTimer };
+LP_DEVICE_TWIN_BINDING* deviceTwinBindingSet[] = { &buttonPressed, &relay1DeviceTwin };
+LP_DIRECT_METHOD_BINDING* directMethodBindingSet[] = { &resetDevice };
 
 
 int main(int argc, char* argv[]) {
@@ -191,7 +191,7 @@ static void MeasureSensorHandler(EventLoopTimer* eventLoopTimer) {
 /// <summary>
 /// Set Relay state using Device Twin "Relay1": {"value": true },
 /// </summary>
-static void DeviceTwinRelay1RateHandler(LP_DeviceTwinBinding* deviceTwinBinding) {
+static void DeviceTwinRelay1RateHandler(LP_DEVICE_TWIN_BINDING* deviceTwinBinding) {
 	switch (deviceTwinBinding->twinType) {
 	case LP_TYPE_BOOL:
 		Log_Debug("\nBool Value '%d'\n", *(bool*)deviceTwinBinding->twinState);
@@ -224,7 +224,7 @@ static void ResetDeviceHandler(EventLoopTimer* eventLoopTimer) {
 /// <summary>
 /// Start Device Power Restart Direct Method 'ResetMethod' {"reset_timer":5}
 /// </summary>
-static LP_DirectMethodResponseCode ResetDirectMethodHandler(JSON_Object* json, LP_DirectMethodBinding* directMethodBinding, char** responseMsg) {
+static LP_DirectMethodResponseCode ResetDirectMethodHandler(JSON_Object* json, LP_DIRECT_METHOD_BINDING* directMethodBinding, char** responseMsg) {
 	const char propertyName[] = "reset_timer";
 	const size_t responseLen = 60; // Allocate and initialize a response message buffer. The calling function is responsible for the freeing memory
 	static struct timespec period;
@@ -245,7 +245,7 @@ static LP_DirectMethodResponseCode ResetDirectMethodHandler(JSON_Object* json, L
 		// Create Direct Method Response
 		snprintf(*responseMsg, responseLen, "%s called. Reset in %d seconds", directMethodBinding->methodName, seconds);
 
-		// Set One Shot LP_Timer
+		// Set One Shot LP_TIMER
 		period = (struct timespec){ .tv_sec = seconds, .tv_nsec = 0 };
 		lp_setOneShotTimer(&resetDeviceOneShotTimer, &period);
 

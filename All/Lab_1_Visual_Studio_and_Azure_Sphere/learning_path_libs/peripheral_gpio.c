@@ -1,9 +1,9 @@
 #include "peripheral_gpio.h"
 
-LP_PeripheralGpio** _peripheralSet = NULL;
+LP_PERIPHERAL_GPIO** _peripheralSet = NULL;
 size_t _peripheralSetCount = 0;
 
-bool lp_openPeripheralGpio(LP_PeripheralGpio* peripheral) {
+bool lp_openPeripheralGpio(LP_PERIPHERAL_GPIO* peripheral) {
 	if (peripheral == NULL || peripheral->pin < 0) { return false; }
 
 	if (peripheral->opened) { return true; }
@@ -46,7 +46,7 @@ bool lp_openPeripheralGpio(LP_PeripheralGpio* peripheral) {
 	return true;
 }
 
-void lp_openPeripheralGpioSet(LP_PeripheralGpio** peripheralSet, size_t peripheralSetCount) {
+void lp_openPeripheralGpioSet(LP_PERIPHERAL_GPIO** peripheralSet, size_t peripheralSetCount) {
 	_peripheralSet = peripheralSet;
 	_peripheralSetCount = peripheralSetCount;
 
@@ -66,7 +66,7 @@ void lp_openPeripheralGpioSet(LP_PeripheralGpio** peripheralSet, size_t peripher
 /// </summary>
 /// <param name="fd">File descriptor to close</param>
 /// <param name="fdName">File descriptor name to use in error message</param>
-void lp_closePeripheralGpio(LP_PeripheralGpio* peripheral) {
+void lp_closePeripheralGpio(LP_PERIPHERAL_GPIO* peripheral) {
 	if (peripheral->opened && peripheral->fd >= 0) {
 		int result = close(peripheral->fd);
 		if (result != 0) {
@@ -83,13 +83,13 @@ void lp_closePeripheralGpioSet(void) {
 	}
 }
 
-void lp_gpioOn(LP_PeripheralGpio* peripheral) {
+void lp_gpioOn(LP_PERIPHERAL_GPIO* peripheral) {
 	if (peripheral == NULL || peripheral->fd < 0 || peripheral->pin < 0 || !peripheral->opened) { return; }
 
 	GPIO_SetValue(peripheral->fd, peripheral->invertPin ? GPIO_Value_Low : GPIO_Value_High);
 }
 
-void lp_gpioOff(LP_PeripheralGpio* peripheral) {
+void lp_gpioOff(LP_PERIPHERAL_GPIO* peripheral) {
 	if (peripheral == NULL || peripheral->fd < 0 || peripheral->pin < 0 || !peripheral->opened) { return; }
 
 	GPIO_SetValue(peripheral->fd, peripheral->invertPin ? GPIO_Value_High : GPIO_Value_Low);

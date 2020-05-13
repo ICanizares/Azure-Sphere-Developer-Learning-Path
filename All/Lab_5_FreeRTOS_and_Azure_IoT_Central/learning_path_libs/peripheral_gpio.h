@@ -28,12 +28,12 @@ struct _peripheralGpio {
 	bool opened;
 };
 
-typedef struct _peripheralGpio LP_PeripheralGpio;
+typedef struct _peripheralGpio LP_PERIPHERAL_GPIO;
 
 
-bool lp_openPeripheralGpio(LP_PeripheralGpio* peripheral);
-void lp_openPeripheralGpioSet(LP_PeripheralGpio** peripheralSet, size_t peripheralSetCount);
+bool lp_openPeripheralGpio(LP_PERIPHERAL_GPIO* peripheral);
+void lp_openPeripheralGpioSet(LP_PERIPHERAL_GPIO** peripheralSet, size_t peripheralSetCount);
 void lp_closePeripheralGpioSet(void);
-void lp_closePeripheralGpio(LP_PeripheralGpio* peripheral);
-void lp_gpioOn(LP_PeripheralGpio* peripheral);
-void lp_gpioOff(LP_PeripheralGpio* peripheral);
+void lp_closePeripheralGpio(LP_PERIPHERAL_GPIO* peripheral);
+void lp_gpioOn(LP_PERIPHERAL_GPIO* peripheral);
+void lp_gpioOff(LP_PERIPHERAL_GPIO* peripheral);

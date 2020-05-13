@@ -1,9 +1,9 @@
 #include "direct_methods.h"
 
-LP_DirectMethodBinding** _directMethods;
+LP_DIRECT_METHOD_BINDING** _directMethods;
 size_t _directMethodCount;
 
-void lp_openDirectMethodSet(LP_DirectMethodBinding* directMethods[], size_t directMethodCount) {
+void lp_openDirectMethodSet(LP_DIRECT_METHOD_BINDING* directMethods[], size_t directMethodCount) {
 	_directMethods = directMethods;
 	_directMethodCount = directMethodCount;
 }
@@ -28,7 +28,7 @@ int lp_azureDirectMethodHandler(const char* method_name, const unsigned char* pa
 	LP_DirectMethodResponseCode responseCode = LP_METHOD_NOT_FOUND;
 	char* responseMsg = NULL;
 
-	LP_DirectMethodBinding* directMethodBinding = NULL;
+	LP_DIRECT_METHOD_BINDING* directMethodBinding = NULL;
 
 	const char* responseMessage = methodNotFoundMsg;
 	int result = LP_METHOD_NOT_FOUND;
@@ -74,7 +74,7 @@ int lp_azureDirectMethodHandler(const char* method_name, const unsigned char* pa
 		}
 	}
 
-	if (directMethodBinding != NULL && directMethodBinding->handler != NULL) {	// was a LP_DirectMethodBinding found
+	if (directMethodBinding != NULL && directMethodBinding->handler != NULL) {	// was a LP_DIRECT_METHOD_BINDING found
 
 		responseCode = directMethodBinding->handler(jsonObject, directMethodBinding, &responseMsg);
 

@@ -15,9 +15,9 @@ struct _directMethodBinding {
 	LP_DirectMethodResponseCode(*handler)(JSON_Object* json, struct _directMethodBinding* peripheral, char** responseMsg);
 };
 
-typedef struct _directMethodBinding LP_DirectMethodBinding;
+typedef struct _directMethodBinding LP_DIRECT_METHOD_BINDING;
 
-void lp_openDirectMethodSet(LP_DirectMethodBinding* directMethods[], size_t directMethodCount);
+void lp_openDirectMethodSet(LP_DIRECT_METHOD_BINDING* directMethods[], size_t directMethodCount);
 void lp_closeDirectMethodSet(void);
 int lp_azureDirectMethodHandler(const char* method_name, const unsigned char* payload, size_t payloadSize,
 	unsigned char** responsePayload, size_t* responsePayloadSize, void* userContextCallback);

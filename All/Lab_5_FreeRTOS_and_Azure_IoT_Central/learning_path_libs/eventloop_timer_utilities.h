@@ -30,7 +30,7 @@ typedef void (*EventLoopTimerHandler)(EventLoopTimer *timer);
 /// </summary>
 /// <param name="eventLoop">Event loop to which the timer will be added.</param>
 /// <param name="handler">Callback to invoke when the timer expires.</param>
-/// <param name="period">LP_Timer period.</param>
+/// <param name="period">LP_TIMER period.</param>
 /// <returns>On success, pointer to new EventLoopTimer, which should be disposed of
 /// with <see cref="DisposeEventLoopTimer" />. On failure, returns NULL, with more
 /// information available in errno.</returns>.
@@ -69,7 +69,7 @@ int ConsumeEventLoopTimerEvent(EventLoopTimer *timer);
 /// timer's period. It does not have to be called to set the initial period - that is
 /// handled by <see cref="CreateEventLoopPeriodicTimer" />.
 /// </summary>
-/// <param name="timer">LP_Timer previously allocated with <see cref="CreateEventLoopPeriodicTimer" />
+/// <param name="timer">LP_TIMER previously allocated with <see cref="CreateEventLoopPeriodicTimer" />
 /// or <see cref="CreateEventLoopDisarmedTimer" />.</param>
 /// <param name="period">New timer period.</param>
 /// <returns>0 on success, -1 on failure, in which case errno contains more information.</returns>
@@ -81,7 +81,7 @@ int SetEventLoopTimerPeriod(EventLoopTimer *timer, const struct timespec *period
 /// Set the timer to expire one after a specified period.
 /// </summary>
 /// <returns>0 on succcess, -1 on failure, in which case errno contains more information.</returns>
-/// <param name="timer">LP_Timer previously allocated with <see cref="CreateEventLoopPeriodicTimer" />
+/// <param name="timer">LP_TIMER previously allocated with <see cref="CreateEventLoopPeriodicTimer" />
 /// or <see cref="CreateEventLoopDisarmedTimer" />.</param>
 /// <param name="delay">Period to wait before timer expires.</param>
 /// <returns>0 on success, -1 on failure, in which case errno contains more
@@ -93,7 +93,7 @@ int SetEventLoopTimerOneShot(EventLoopTimer *timer, const struct timespec *delay
 /// <summary>
 /// Disarm an existing event loop timer.
 /// </summary>
-/// <param name="timer">LP_Timer previously allocated with <see cref="CreateEventLoopPeriodicTimer" />
+/// <param name="timer">LP_TIMER previously allocated with <see cref="CreateEventLoopPeriodicTimer" />
 /// or <see cref="CreateEventLoopDisarmedTimer" />.</param>
 /// <returns>0 on success; -1 on failure, in which case errno contains more
 /// information.</returns>

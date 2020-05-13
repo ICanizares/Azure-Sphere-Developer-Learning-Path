@@ -9,13 +9,13 @@ typedef struct {
 	struct timespec period;
 	EventLoopTimer* eventLoopTimer;
 	const char* name;
-} LP_Timer;
+} LP_TIMER;
 
-void lp_startTimerSet(LP_Timer* timerSet[], size_t timerCount);
+void lp_startTimerSet(LP_TIMER* timerSet[], size_t timerCount);
 void lp_stopTimerSet(void);
-bool lp_startTimer(LP_Timer* timer);
-void lp_stopTimer(LP_Timer* timer);
+bool lp_startTimer(LP_TIMER* timer);
+void lp_stopTimer(LP_TIMER* timer);
 EventLoop* lp_getTimerEventLoop(void);
 void lp_stopTimerEventLoop(void);
-bool lp_changeTimer(LP_Timer* timer, const struct timespec* period);
-bool lp_setOneShotTimer(LP_Timer* timer, const struct timespec* delay);
+bool lp_changeTimer(LP_TIMER* timer, const struct timespec* period);
+bool lp_setOneShotTimer(LP_TIMER* timer, const struct timespec* delay);

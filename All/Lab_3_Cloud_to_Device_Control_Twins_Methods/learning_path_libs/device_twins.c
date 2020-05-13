@@ -1,15 +1,15 @@
 #include "device_twins.h"
 
-void SetDesiredState(JSON_Object* desiredProperties, LP_DeviceTwinBinding* deviceTwinBinding);
+void SetDesiredState(JSON_Object* desiredProperties, LP_DEVICE_TWIN_BINDING* deviceTwinBinding);
 void lp_deviceTwinsReportStatusCallback(int result, void* context);
 bool DeviceTwinUpdateReportedState(char* reportedPropertiesString);
 
 
-LP_DeviceTwinBinding** _deviceTwins = NULL;
+LP_DEVICE_TWIN_BINDING** _deviceTwins = NULL;
 size_t _deviceTwinCount = 0;
 
 
-void lp_openDeviceTwinSet(LP_DeviceTwinBinding* deviceTwins[], size_t deviceTwinCount) {
+void lp_openDeviceTwinSet(LP_DEVICE_TWIN_BINDING* deviceTwins[], size_t deviceTwinCount) {
 	_deviceTwins = deviceTwins;
 	_deviceTwinCount = deviceTwinCount;
 
@@ -22,9 +22,9 @@ void lp_closeDeviceTwinSet(void) {
 	for (int i = 0; i < _deviceTwinCount; i++) { lp_closeDeviceTwin(_deviceTwins[i]); }
 }
 
-void lp_openDeviceTwin(LP_DeviceTwinBinding* deviceTwinBinding) {
+void lp_openDeviceTwin(LP_DEVICE_TWIN_BINDING* deviceTwinBinding) {
 	if (deviceTwinBinding->twinType == LP_TYPE_UNKNOWN) {
-		Log_Debug("\n\nDevice Twin '%s' missing type information.\nInclude .twinType option in LP_DeviceTwinBinding definition.\nExample .twinType=LP_TYPE_BOOL. Valid types include LP_TYPE_BOOL, LP_TYPE_INT, LP_TYPE_FLOAT, LP_TYPE_STRING.\n\n", deviceTwinBinding->twinProperty);
+		Log_Debug("\n\nDevice Twin '%s' missing type information.\nInclude .twinType option in LP_DEVICE_TWIN_BINDING definition.\nExample .twinType=LP_TYPE_BOOL. Valid types include LP_TYPE_BOOL, LP_TYPE_INT, LP_TYPE_FLOAT, LP_TYPE_STRING.\n\n", deviceTwinBinding->twinProperty);
 		lp_terminate(ExitCode_OpenDeviceTwin);
 	}
 
@@ -44,7 +44,7 @@ void lp_openDeviceTwin(LP_DeviceTwinBinding* deviceTwinBinding) {
 	}
 }
 
-void lp_closeDeviceTwin(LP_DeviceTwinBinding* deviceTwinBinding) {
+void lp_closeDeviceTwin(LP_DEVICE_TWIN_BINDING* deviceTwinBinding) {
 	if (deviceTwinBinding->twinState != NULL) {
 		free(deviceTwinBinding->twinState);
 		deviceTwinBinding->twinState = NULL;
@@ -106,7 +106,7 @@ cleanup:
 /// <summary>
 ///     Checks to see if the device twin twinProperty(name) is found in the json object. If yes, then act upon the request
 /// </summary>
-void SetDesiredState(JSON_Object* jsonObject, LP_DeviceTwinBinding* deviceTwinBinding) {
+void SetDesiredState(JSON_Object* jsonObject, LP_DEVICE_TWIN_BINDING* deviceTwinBinding) {
 
 	switch (deviceTwinBinding->twinType) {
 	case LP_TYPE_INT:
@@ -155,7 +155,7 @@ void SetDesiredState(JSON_Object* jsonObject, LP_DeviceTwinBinding* deviceTwinBi
 	}
 }
 
-bool lp_deviceTwinReportState(LP_DeviceTwinBinding* deviceTwinBinding, void* state) {
+bool lp_deviceTwinReportState(LP_DEVICE_TWIN_BINDING* deviceTwinBinding, void* state) {
 	int len = 0;
 	size_t reportLen = 10; // initialize to 10 chars to allow for JSON and NULL termination. This is generous by a couple of bytes
 	bool result = false;
