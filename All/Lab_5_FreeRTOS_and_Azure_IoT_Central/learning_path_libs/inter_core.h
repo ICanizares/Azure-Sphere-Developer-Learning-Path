@@ -1,5 +1,4 @@
-#ifndef inter_core_h
-#define inter_core_h
+#pragma once
 
 #include "eventloop_timer_utilities.h"
 #include "terminate.h"
@@ -17,7 +16,5 @@
 #include "timer.h"
 
 
-bool SendInterCoreMessage(const char* msg);
-int EnableInterCoreCommunications(const char* rtAppComponentId, void (*interCoreCallback)(char*));
-
-#endif
+bool lp_sendInterCoreMessage(const char* msg);
+int lp_enableInterCoreCommunications(const char* rtAppComponentId, void (*interCoreCallback)(char*));

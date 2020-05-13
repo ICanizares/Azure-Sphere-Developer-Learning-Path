@@ -1,9 +1,9 @@
 #include "peripheral_gpio.h"
 
-PeripheralGpio** _peripheralSet = NULL;
+LP_PeripheralGpio** _peripheralSet = NULL;
 size_t _peripheralSetCount = 0;
 
-bool OpenPeripheralGpio(PeripheralGpio* peripheral) {
+bool lp_openPeripheralGpio(LP_PeripheralGpio* peripheral) {
 	if (peripheral == NULL || peripheral->pin < 0) { return false; }
 
 	if (peripheral->opened) { return true; }
@@ -18,7 +18,7 @@ bool OpenPeripheralGpio(PeripheralGpio* peripheral) {
 	}
 
 	switch (peripheral->direction) {
-	case OUTPUT:
+	case LP_OUTPUT:
 		peripheral->fd = GPIO_OpenAsOutput(peripheral->pin, GPIO_OutputMode_PushPull, peripheral->initialState);
 		if (peripheral->fd < 0) {
 			Log_Debug(
@@ -27,7 +27,7 @@ bool OpenPeripheralGpio(PeripheralGpio* peripheral) {
 			return false;
 		}
 		break;
-	case INPUT:
+	case LP_INPUT:
 		peripheral->fd = GPIO_OpenAsInput(peripheral->pin);
 		if (peripheral->fd < 0) {
 			Log_Debug(
@@ -36,7 +36,7 @@ bool OpenPeripheralGpio(PeripheralGpio* peripheral) {
 			return false;
 		}
 		break;
-	case DIRECTION_UNKNOWN:
+	case LP_DIRECTION_UNKNOWN:
 		Log_Debug("Unknown direction for peripheral %s", peripheral->name);
 		return false;
 		break;
@@ -46,7 +46,7 @@ bool OpenPeripheralGpio(PeripheralGpio* peripheral) {
 	return true;
 }
 
-void OpenPeripheralGpioSet(PeripheralGpio** peripheralSet, size_t peripheralSetCount) {
+void lp_openPeripheralGpioSet(LP_PeripheralGpio** peripheralSet, size_t peripheralSetCount) {
 	_peripheralSet = peripheralSet;
 	_peripheralSetCount = peripheralSetCount;
 
@@ -54,7 +54,7 @@ void OpenPeripheralGpioSet(PeripheralGpio** peripheralSet, size_t peripheralSetC
 		_peripheralSet[i]->fd = -1;
 		if (_peripheralSet[i]->initialise != NULL) {
 			if (!_peripheralSet[i]->initialise(_peripheralSet[i])) {
-				Terminate();
+				lp_terminate(ExitCode_Open_Peripheral);
 				break;
 			}
 		}
@@ -66,7 +66,7 @@ void OpenPeripheralGpioSet(PeripheralGpio** peripheralSet, size_t peripheralSetC
 /// </summary>
 /// <param name="fd">File descriptor to close</param>
 /// <param name="fdName">File descriptor name to use in error message</param>
-void ClosePeripheralGpio(PeripheralGpio* peripheral) {
+void lp_closePeripheralGpio(LP_PeripheralGpio* peripheral) {
 	if (peripheral->opened && peripheral->fd >= 0) {
 		int result = close(peripheral->fd);
 		if (result != 0) {
@@ -77,19 +77,19 @@ void ClosePeripheralGpio(PeripheralGpio* peripheral) {
 	peripheral->opened = false;
 }
 
-void ClosePeripheralGpioSet(void) {
+void lp_closePeripheralGpioSet(void) {
 	for (int i = 0; i < _peripheralSetCount; i++) {
-		ClosePeripheralGpio(_peripheralSet[i]);
+		lp_closePeripheralGpio(_peripheralSet[i]);
 	}
 }
 
-void Gpio_On(PeripheralGpio* peripheral) {
+void lp_gpioOn(LP_PeripheralGpio* peripheral) {
 	if (peripheral == NULL || peripheral->fd < 0 || peripheral->pin < 0 || !peripheral->opened) { return; }
 
 	GPIO_SetValue(peripheral->fd, peripheral->invertPin ? GPIO_Value_Low : GPIO_Value_High);
 }
 
-void Gpio_Off(PeripheralGpio* peripheral) {
+void lp_gpioOff(LP_PeripheralGpio* peripheral) {
 	if (peripheral == NULL || peripheral->fd < 0 || peripheral->pin < 0 || !peripheral->opened) { return; }
 
 	GPIO_SetValue(peripheral->fd, peripheral->invertPin ? GPIO_Value_High : GPIO_Value_Low);

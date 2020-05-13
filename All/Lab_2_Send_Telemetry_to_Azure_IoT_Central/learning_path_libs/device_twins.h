@@ -1,5 +1,4 @@
-#ifndef device_twins_h
-#define device_twins_h
+#pragma once
 
 #include "azure_iot.h"
 #include "parson.h"
@@ -7,11 +6,11 @@
 #include <iothub_device_client_ll.h>
 
 typedef enum {
-	TYPE_UNKNOWN = 0,
-	TYPE_BOOL = 1,
-	TYPE_FLOAT = 2,
-	TYPE_INT = 3,
-	TYPE_STRING = 4
+	LP_TYPE_UNKNOWN = 0,
+	LP_TYPE_BOOL = 1,
+	LP_TYPE_FLOAT = 2,
+	LP_TYPE_INT = 3,
+	LP_TYPE_STRING = 4
 } valueType;
 
 struct _deviceTwinBinding {
@@ -21,16 +20,14 @@ struct _deviceTwinBinding {
 	void (*handler)(struct _deviceTwinBinding* deviceTwinBinding);
 };
 
-typedef struct _deviceTwinBinding DeviceTwinBinding;
+typedef struct _deviceTwinBinding LP_DeviceTwinBinding;
 
-void TwinCallback(DEVICE_TWIN_UPDATE_STATE updateState, const unsigned char* payload, size_t payloadSize, void* userContextCallback);
-void DeviceTwinsReportStatusCallback(int result, void* context);
+void lp_twinCallback(DEVICE_TWIN_UPDATE_STATE updateState, const unsigned char* payload, size_t payloadSize, void* userContextCallback);
+void lp_deviceTwinsReportStatusCallback(int result, void* context);
 
-void OpenDeviceTwinSet(DeviceTwinBinding* deviceTwins[], size_t deviceTwinCount);
-void CloseDeviceTwinSet(void);
+void lp_openDeviceTwinSet(LP_DeviceTwinBinding* deviceTwins[], size_t deviceTwinCount);
+void lp_closeDeviceTwinSet(void);
 
-void OpenDeviceTwin(DeviceTwinBinding* deviceTwinBinding);
-void CloseDeviceTwin(DeviceTwinBinding* deviceTwinBinding);
-bool DeviceTwinReportState(DeviceTwinBinding* deviceTwinBinding, void* state);
-
-#endif
+void lp_openDeviceTwin(LP_DeviceTwinBinding* deviceTwinBinding);
+void lp_closeDeviceTwin(LP_DeviceTwinBinding* deviceTwinBinding);
+bool lp_deviceTwinReportState(LP_DeviceTwinBinding* deviceTwinBinding, void* state);

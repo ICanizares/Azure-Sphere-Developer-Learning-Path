@@ -5,15 +5,12 @@ Disclaimer: Please read!
 The learning_path_libs C Functions provided in the learning_path_libs folder:
 
 	1) are NOT supported Azure Sphere APIs.
-	2) are built from the Azure Sphere SDK Samples provided at "https://github.com/Azure/azure-sphere-samples".
-	3) are not intended as a substitute for understanding the Azure Sphere SDK Samples.
-	4) aim to follow best practices as demonstrated by the Azure Sphere SDK Samples.
-	5) are provided as is and as a convenience to aid the Azure Sphere Developer Learning experience.
+	2) are prefixed with lp_ (typedefs are prefixed with LP_)
+	3) are built from the Azure Sphere SDK Samples provided at "https://github.com/Azure/azure-sphere-samples".
+	4) are not intended as a substitute for understanding the Azure Sphere SDK Samples.
+	5) aim to follow best practices as demonstrated by the Azure Sphere SDK Samples.
+	6) are provided as is and as a convenience to aid the Azure Sphere Developer Learning experience.
 
-**********************************************************************************************************************/
-
-
-/*********************************************************************************************************************
 
 Support developer boards for the Azure Sphere Developer Learning Path:
 
@@ -32,13 +29,13 @@ How to select your developer board
 #include "hw/azure_sphere_learning_path.h"
 
 #include "learning_path_libs/azure_iot.h"
+#include "learning_path_libs/exit_codes.h"
 #include "learning_path_libs/globals.h"
 #include "learning_path_libs/peripheral_gpio.h"
 #include "learning_path_libs/terminate.h"
 #include "learning_path_libs/timer.h"
 
 #include "applibs_versions.h"
-#include "exit_codes.h"
 #include <applibs/gpio.h>
 #include <applibs/log.h>
 #include <applibs/powermanagement.h>
@@ -70,9 +67,9 @@ static void MeasureSensorHandler(EventLoopTimer* eventLoopTimer);
 static void ButtonPressCheckHandler(EventLoopTimer* eventLoopTimer);
 static void NetworkConnectionStatusHandler(EventLoopTimer* eventLoopTimer);
 static void ResetDeviceHandler(EventLoopTimer* eventLoopTimer);
-static void DeviceTwinBlinkRateHandler(DeviceTwinBinding* deviceTwinBinding);
-static void DeviceTwinRelay1Handler(DeviceTwinBinding* deviceTwinBinding);
-static DirectMethodResponseCode ResetDirectMethodHandler(JSON_Object* json, DirectMethodBinding* directMethodBinding, char** responseMsg);
+static void DeviceTwinBlinkRateHandler(LP_DeviceTwinBinding* deviceTwinBinding);
+static void DeviceTwinRelay1Handler(LP_DeviceTwinBinding* deviceTwinBinding);
+static LP_DirectMethodResponseCode ResetDirectMethodHandler(JSON_Object* json, LP_DirectMethodBinding* directMethodBinding, char** responseMsg);
 
 static char msgBuffer[JSON_MESSAGE_BYTES] = { 0 };
 
@@ -87,25 +84,25 @@ static const struct timespec led1BlinkIntervals[] = { {0, 125000000}, {0, 250000
 static const int led1BlinkIntervalsCount = NELEMS(led1BlinkIntervals);
 
 // GPIO Input PeripheralGpios
-static PeripheralGpio buttonA = { .pin = BUTTON_A, .direction = INPUT, .initialise = OpenPeripheralGpio, .name = "buttonA" };
-static PeripheralGpio buttonB = { .pin = BUTTON_B, .direction = INPUT, .initialise = OpenPeripheralGpio, .name = "buttonB" };
+static LP_PeripheralGpio buttonA = { .pin = BUTTON_A, .direction = LP_INPUT, .initialise = lp_openPeripheralGpio, .name = "buttonA" };
+static LP_PeripheralGpio buttonB = { .pin = BUTTON_B, .direction = LP_INPUT, .initialise = lp_openPeripheralGpio, .name = "buttonB" };
 
 // GPIO Output PeripheralGpios
-static PeripheralGpio led1 = {
-	.pin = LED1, .direction = OUTPUT, .initialState = GPIO_Value_Low, .invertPin = true,
-	.initialise = OpenPeripheralGpio, .name = "led1"
+static LP_PeripheralGpio led1 = {
+	.pin = LED1, .direction = LP_OUTPUT, .initialState = GPIO_Value_Low, .invertPin = true,
+	.initialise = lp_openPeripheralGpio, .name = "led1"
 };
-static PeripheralGpio led2 = {
-	.pin = LED2, .direction = OUTPUT, .initialState = GPIO_Value_Low, .invertPin = true,
-	.initialise = OpenPeripheralGpio, .name = "led2"
+static LP_PeripheralGpio led2 = {
+	.pin = LED2, .direction = LP_OUTPUT, .initialState = GPIO_Value_Low, .invertPin = true,
+	.initialise = lp_openPeripheralGpio, .name = "led2"
 };
-static PeripheralGpio networkConnectedLed = {
-	.pin = NETWORK_CONNECTED_LED, .direction = OUTPUT, .initialState = GPIO_Value_Low, .invertPin = true,
-	.initialise = OpenPeripheralGpio, .name = "networkConnectedLed"
+static LP_PeripheralGpio networkConnectedLed = {
+	.pin = NETWORK_CONNECTED_LED, .direction = LP_OUTPUT, .initialState = GPIO_Value_Low, .invertPin = true,
+	.initialise = lp_openPeripheralGpio, .name = "networkConnectedLed"
 };
-static PeripheralGpio relay1 = {
-	.pin = RELAY, .direction = OUTPUT, .initialState = GPIO_Value_Low, .invertPin = false,
-	.initialise = OpenPeripheralGpio, .name = "relay1"
+static LP_PeripheralGpio relay1 = {
+	.pin = RELAY, .direction = LP_OUTPUT, .initialState = GPIO_Value_Low, .invertPin = false,
+	.initialise = lp_openPeripheralGpio, .name = "relay1"
 };
 
 // Timers
@@ -117,24 +114,24 @@ static Timer measureSensorTimer = { .period = { 10, 0 }, .name = "measureSensorT
 static Timer resetDeviceOneShotTimer = { .period = { 0, 0 }, .name = "resetDeviceOneShotTimer", .handler = ResetDeviceHandler };
 
 // Azure IoT Device Twins
-static DeviceTwinBinding led1BlinkRate = { .twinProperty = "LedBlinkRate", .twinType = TYPE_INT, .handler = DeviceTwinBlinkRateHandler };
-static DeviceTwinBinding relay1DeviceTwin = { .twinProperty = "Relay1", .twinType = TYPE_BOOL, .handler = DeviceTwinRelay1Handler };
-static DeviceTwinBinding buttonPressed = { .twinProperty = "ButtonPressed", .twinType = TYPE_STRING };
-static DeviceTwinBinding deviceResetUtc = { .twinProperty = "DeviceResetUTC", .twinType = TYPE_STRING };
+static LP_DeviceTwinBinding led1BlinkRate = { .twinProperty = "LedBlinkRate", .twinType = LP_TYPE_INT, .handler = DeviceTwinBlinkRateHandler };
+static LP_DeviceTwinBinding relay1DeviceTwin = { .twinProperty = "Relay1", .twinType = LP_TYPE_BOOL, .handler = DeviceTwinRelay1Handler };
+static LP_DeviceTwinBinding buttonPressed = { .twinProperty = "ButtonPressed", .twinType = LP_TYPE_STRING };
+static LP_DeviceTwinBinding deviceResetUtc = { .twinProperty = "DeviceResetUTC", .twinType = LP_TYPE_STRING };
 
 // Azure IoT Direct Methods
-static DirectMethodBinding resetDevice = { .methodName = "ResetMethod", .handler = ResetDirectMethodHandler };
+static LP_DirectMethodBinding resetDevice = { .methodName = "ResetMethod", .handler = ResetDirectMethodHandler };
 
 // Initialize Sets
-PeripheralGpio* PeripheralGpioSet[] = { &buttonA, &buttonB, &led1, &led2, &networkConnectedLed, &relay1 };
+LP_PeripheralGpio* PeripheralGpioSet[] = { &buttonA, &buttonB, &led1, &led2, &networkConnectedLed, &relay1 };
 Timer* timerSet[] = { &led1BlinkTimer, &led2BlinkOffOneShotTimer, &buttonPressCheckTimer, &networkConnectionStatusTimer, &resetDeviceOneShotTimer, &measureSensorTimer };
-DeviceTwinBinding* deviceTwinBindingSet[] = { &led1BlinkRate, &buttonPressed, &relay1DeviceTwin, &deviceResetUtc };
-DirectMethodBinding* directMethodBindingSet[] = { &resetDevice };
+LP_DeviceTwinBinding* deviceTwinBindingSet[] = { &led1BlinkRate, &buttonPressed, &relay1DeviceTwin, &deviceResetUtc };
+LP_DirectMethodBinding* directMethodBindingSet[] = { &resetDevice };
 
 
 int main(int argc, char* argv[]) {
-	RegisterTerminationHandler();
-	ProcessCmdArgs(argc, argv);
+	lp_registerTerminationHandler();
+	lp_processCmdArgs(argc, argv);
 
 	if (strlen(scopeId) == 0) {
 		Log_Debug("ScopeId needs to be set in the app_manifest CmdArgs\n");
@@ -144,18 +141,18 @@ int main(int argc, char* argv[]) {
 	InitPeripheralGpiosAndHandlers();
 
 	// Main loop
-	while (!IsTerminationRequired()) {
-		int result = EventLoop_Run(GetTimerEventLoop(), -1, true);
+	while (!lp_isTerminationRequired()) {
+		int result = EventLoop_Run(lp_getTimerEventLoop(), -1, true);
 		// Continue if interrupted by signal, e.g. due to breakpoint being set.
 		if (result == -1 && errno != EINTR) {
-			Terminate();
+			lp_terminate(ExitCode_Main_EventLoopFail);
 		}
 	}
 
 	ClosePeripheralGpiosAndHandlers();
 
 	Log_Debug("Application exiting.\n");
-	return GetTerminationExitCode();
+	return lp_getTerminationExitCode();
 }
 
 /// <summary>
@@ -163,15 +160,15 @@ int main(int argc, char* argv[]) {
 /// </summary>
 static void NetworkConnectionStatusHandler(EventLoopTimer* eventLoopTimer) {
 	if (ConsumeEventLoopTimerEvent(eventLoopTimer) != 0) {
-		Terminate();
+		lp_terminate(ExitCode_ConsumeEventLoopTimeEvent);
 		return;
 	}
 
-	if (ConnectToAzureIot()) {
-		Gpio_On(&networkConnectedLed);
+	if (lp_connectToAzureIot()) {
+		lp_gpioOn(&networkConnectedLed);
 	}
 	else {
-		Gpio_Off(&networkConnectedLed);
+		lp_gpioOff(&networkConnectedLed);
 	}
 }
 
@@ -179,10 +176,10 @@ static void NetworkConnectionStatusHandler(EventLoopTimer* eventLoopTimer) {
 /// Turn on LED2, send message to Azure IoT and set a one shot timer to turn LED2 off
 /// </summary>
 static void SendMsgLed2On(char* message) {
-	Gpio_On(&led2);
+	lp_gpioOn(&led2);
 	Log_Debug("%s\n", message);
-	SendMsg(message);
-	SetOneShotTimer(&led2BlinkOffOneShotTimer, &led2BlinkPeriod);
+	lp_sendMsg(message);
+	lp_setOneShotTimer(&led2BlinkOffOneShotTimer, &led2BlinkPeriod);
 }
 
 /// <summary>
@@ -190,10 +187,10 @@ static void SendMsgLed2On(char* message) {
 /// </summary>
 static void Led2OffHandler(EventLoopTimer* eventLoopTimer) {
 	if (ConsumeEventLoopTimerEvent(eventLoopTimer) != 0) {
-		Terminate();
+		lp_terminate(ExitCode_ConsumeEventLoopTimeEvent);
 		return;
 	}
-	Gpio_Off(&led2);
+	lp_gpioOff(&led2);
 }
 
 /// <summary>
@@ -201,23 +198,23 @@ static void Led2OffHandler(EventLoopTimer* eventLoopTimer) {
 /// </summary>
 static void MeasureSensorHandler(EventLoopTimer* eventLoopTimer) {
 	if (ConsumeEventLoopTimerEvent(eventLoopTimer) != 0) {
-		Terminate();
+		lp_terminate(ExitCode_ConsumeEventLoopTimeEvent);
 		return;
 	}
-	if (ReadTelemetry(msgBuffer, JSON_MESSAGE_BYTES) > 0) {
+	if (lp_readTelemetry(msgBuffer, JSON_MESSAGE_BYTES) > 0) {
 		SendMsgLed2On(msgBuffer);
 	}
 }
 
 /// <summary>
-/// Read Button PeripheralGpio returns pressed state
+/// Read Button LP_PeripheralGpio returns pressed state
 /// </summary>
-static bool IsButtonPressed(PeripheralGpio button, GPIO_Value_Type* oldState) {
+static bool IsButtonPressed(LP_PeripheralGpio button, GPIO_Value_Type* oldState) {
 	bool isButtonPressed = false;
 	GPIO_Value_Type newState;
 
 	if (GPIO_GetValue(button.fd, &newState) != 0) {
-		Terminate();
+		lp_terminate(ExitCode_Gpio_Read);
 	}
 	else {
 		// Button is pressed if it is low and different than last known state.
@@ -235,18 +232,18 @@ static void ButtonPressCheckHandler(EventLoopTimer* eventLoopTimer) {
 	static GPIO_Value_Type buttonBState;
 
 	if (ConsumeEventLoopTimerEvent(eventLoopTimer) != 0) {
-		Terminate();
+		lp_terminate(ExitCode_ConsumeEventLoopTimeEvent);
 		return;
 	}
 
 	if (IsButtonPressed(buttonA, &buttonAState)) {
 
 		Led1BlinkIntervalIndex = (Led1BlinkIntervalIndex + 1) % led1BlinkIntervalsCount;
-		ChangeTimer(&led1BlinkTimer, &led1BlinkIntervals[Led1BlinkIntervalIndex]);
+		lp_changeTimer(&led1BlinkTimer, &led1BlinkIntervals[Led1BlinkIntervalIndex]);
 
 		// Report Device Twins Blink Rate and Button Pressed properties
-		DeviceTwinReportState(&led1BlinkRate, &Led1BlinkIntervalIndex);		// TwinType = TYPE_INT
-		DeviceTwinReportState(&buttonPressed, "ButtonA");					// TwinType = TYPE_STRING
+		lp_deviceTwinReportState(&led1BlinkRate, &Led1BlinkIntervalIndex);		// TwinType = LP_TYPE_INT
+		lp_deviceTwinReportState(&buttonPressed, "ButtonA");					// TwinType = LP_TYPE_STRING
 
 		// Send ButtonA Pressed Event
 		if (snprintf(msgBuffer, JSON_MESSAGE_BYTES, cstrJsonEvent, cstrEvtButtonA) > 0) {
@@ -256,7 +253,7 @@ static void ButtonPressCheckHandler(EventLoopTimer* eventLoopTimer) {
 	if (IsButtonPressed(buttonB, &buttonBState)) {
 
 		// Report Device Twins Button Pressed properties
-		DeviceTwinReportState(&buttonPressed, "ButtonB");					// TwinType = TYPE_STRING
+		lp_deviceTwinReportState(&buttonPressed, "ButtonB");					// TwinType = LP_TYPE_STRING
 
 		// Send ButtonB Pressed Event
 		if (snprintf(msgBuffer, JSON_MESSAGE_BYTES, cstrJsonEvent, cstrEvtButtonB) > 0) {
@@ -272,36 +269,36 @@ static void Led1BlinkHandler(EventLoopTimer* eventLoopTimer) {
 	static bool blinkingLedState = false;
 
 	if (ConsumeEventLoopTimerEvent(eventLoopTimer) != 0) {
-		Terminate();
+		lp_terminate(ExitCode_ConsumeEventLoopTimeEvent);
 		return;
 	}
 
 	blinkingLedState = !blinkingLedState;
 
-	if (blinkingLedState) { Gpio_Off(&led1); }
-	else { Gpio_On(&led1); }
+	if (blinkingLedState) { lp_gpioOff(&led1); }
+	else { lp_gpioOn(&led1); }
 }
 
 /// <summary>
 /// Set Blink Rate using Device Twin "LedBlinkRate": {"value": 0}
 /// </summary>
-static void DeviceTwinBlinkRateHandler(DeviceTwinBinding* deviceTwinBinding) {
+static void DeviceTwinBlinkRateHandler(LP_DeviceTwinBinding* deviceTwinBinding) {
 	switch (deviceTwinBinding->twinType) {
-	case TYPE_INT:
+	case LP_TYPE_INT:
 		Log_Debug("\nInteger Value '%d'\n", *(int*)deviceTwinBinding->twinState);
 
 		Led1BlinkIntervalIndex = *(int*)deviceTwinBinding->twinState % led1BlinkIntervalsCount;
-		ChangeTimer(&led1BlinkTimer, &led1BlinkIntervals[Led1BlinkIntervalIndex]);
+		lp_changeTimer(&led1BlinkTimer, &led1BlinkIntervals[Led1BlinkIntervalIndex]);
 
 		break;
-	case TYPE_BOOL:
+	case LP_TYPE_BOOL:
 		Log_Debug("\nBoolean Value '%d'\n", *(bool*)deviceTwinBinding->twinState);
 		// Your implementation goes here - for example turn in light
-	case TYPE_FLOAT:
+	case LP_TYPE_FLOAT:
 		Log_Debug("\nFloat Value '%f'\n", *(float*)deviceTwinBinding->twinState);
 		// Your implementation goes here - for example set a threshold
 		break;
-	case TYPE_STRING:
+	case LP_TYPE_STRING:
 		Log_Debug("\nString Value '%s'\n", (char*)deviceTwinBinding->twinState);
 		// Your implementation goes here - for example update display
 		break;
@@ -313,21 +310,21 @@ static void DeviceTwinBlinkRateHandler(DeviceTwinBinding* deviceTwinBinding) {
 /// <summary>
 /// Device Twin to control relay "Relay1": {"value": true }, "Relay1": {"value": false },
 /// </summary>
-static void DeviceTwinRelay1Handler(DeviceTwinBinding* deviceTwinBinding) {
+static void DeviceTwinRelay1Handler(LP_DeviceTwinBinding* deviceTwinBinding) {
 	switch (deviceTwinBinding->twinType) {
-	case TYPE_BOOL:
+	case LP_TYPE_BOOL:
 		Log_Debug("\nBool Value '%d'\n", *(bool*)deviceTwinBinding->twinState);
 		if (*(bool*)deviceTwinBinding->twinState) {
-			Gpio_On(&relay1);
+			lp_gpioOn(&relay1);
 		}
 		else {
-			Gpio_Off(&relay1);
+			lp_gpioOff(&relay1);
 		}
 		break;
-	case TYPE_INT:
-	case TYPE_FLOAT:
-	case TYPE_STRING:
-	case TYPE_UNKNOWN:
+	case LP_TYPE_INT:
+	case LP_TYPE_FLOAT:
+	case LP_TYPE_STRING:
+	case LP_TYPE_UNKNOWN:
 		break;
 	}
 }
@@ -337,7 +334,7 @@ static void DeviceTwinRelay1Handler(DeviceTwinBinding* deviceTwinBinding) {
 /// </summary>
 static void ResetDeviceHandler(EventLoopTimer* eventLoopTimer) {
 	if (ConsumeEventLoopTimerEvent(eventLoopTimer) != 0) {
-		Terminate();
+		lp_terminate(ExitCode_ConsumeEventLoopTimeEvent);
 		return;
 	}
 	PowerManagement_ForceSystemReboot();
@@ -346,7 +343,7 @@ static void ResetDeviceHandler(EventLoopTimer* eventLoopTimer) {
 /// <summary>
 /// Start Device Power Restart Direct Method 'ResetMethod' {"reset_timer":5}
 /// </summary>
-static DirectMethodResponseCode ResetDirectMethodHandler(JSON_Object* json, DirectMethodBinding* directMethodBinding, char** responseMsg) {
+static LP_DirectMethodResponseCode ResetDirectMethodHandler(JSON_Object* json, LP_DirectMethodBinding* directMethodBinding, char** responseMsg) {
 	const char propertyName[] = "reset_timer";
 	const size_t responseLen = 60; // Allocate and initialize a response message buffer. The calling function is responsible for the freeing memory
 	static struct timespec period;
@@ -355,27 +352,27 @@ static DirectMethodResponseCode ResetDirectMethodHandler(JSON_Object* json, Dire
 	memset(*responseMsg, 0, responseLen);
 
 	if (!json_object_has_value_of_type(json, propertyName, JSONNumber)) {
-		return METHOD_FAILED;
+		return LP_METHOD_FAILED;
 	}
 	int seconds = (int)json_object_get_number(json, propertyName);
 
 	if (seconds > 0 && seconds < 10) {
 
 		// Report Device Reset UTC
-		DeviceTwinReportState(&deviceResetUtc, GetCurrentUtc(msgBuffer, sizeof(msgBuffer)));			// TYPE_STRING
+		lp_deviceTwinReportState(&deviceResetUtc, lp_getCurrentUtc(msgBuffer, sizeof(msgBuffer)));			// LP_TYPE_STRING
 
 		// Create Direct Method Response
 		snprintf(*responseMsg, responseLen, "%s called. Reset in %d seconds", directMethodBinding->methodName, seconds);
 
 		// Set One Shot Timer
 		period = (struct timespec){ .tv_sec = seconds, .tv_nsec = 0 };
-		SetOneShotTimer(&resetDeviceOneShotTimer, &period);
+		lp_setOneShotTimer(&resetDeviceOneShotTimer, &period);
 
-		return METHOD_SUCCEEDED;
+		return LP_METHOD_SUCCEEDED;
 	}
 	else {
 		snprintf(*responseMsg, responseLen, "%s called. Reset Failed. Seconds out of range: %d", directMethodBinding->methodName, seconds);
-		return METHOD_FAILED;
+		return LP_METHOD_FAILED;
 	}
 }
 
@@ -384,14 +381,14 @@ static DirectMethodResponseCode ResetDirectMethodHandler(JSON_Object* json, Dire
 /// </summary>
 /// <returns>0 on success, or -1 on failure</returns>
 static void InitPeripheralGpiosAndHandlers(void) {
-	InitializeDevKit();
+	lp_initializeDevKit();
 
-	OpenPeripheralGpioSet(PeripheralGpioSet, NELEMS(PeripheralGpioSet));
-	OpenDeviceTwinSet(deviceTwinBindingSet, NELEMS(deviceTwinBindingSet));
-	OpenDirectMethodSet(directMethodBindingSet, NELEMS(directMethodBindingSet));
+	lp_openPeripheralGpioSet(PeripheralGpioSet, NELEMS(PeripheralGpioSet));
+	lp_openDeviceTwinSet(deviceTwinBindingSet, NELEMS(deviceTwinBindingSet));
+	lp_openDirectMethodSet(directMethodBindingSet, NELEMS(directMethodBindingSet));
 
-	StartTimerSet(timerSet, NELEMS(timerSet));
-	StartCloudToDevice();
+	lp_startTimerSet(timerSet, NELEMS(timerSet));
+	lp_startCloudToDevice();
 }
 
 /// <summary>
@@ -400,14 +397,14 @@ static void InitPeripheralGpiosAndHandlers(void) {
 static void ClosePeripheralGpiosAndHandlers(void) {
 	Log_Debug("Closing file descriptors\n");
 
-	StopTimerSet();
-	StopCloudToDevice();
+	lp_stopTimerSet();
+	lp_stopCloudToDevice();
 
-	ClosePeripheralGpioSet();
-	CloseDeviceTwinSet();
-	CloseDirectMethodSet();
+	lp_closePeripheralGpioSet();
+	lp_closeDeviceTwinSet();
+	lp_closeDirectMethodSet();
 
-	CloseDevKit();
+	lp_closeDevKit();
 
-	StopTimerEventLoop();
+	lp_stopTimerEventLoop();
 }

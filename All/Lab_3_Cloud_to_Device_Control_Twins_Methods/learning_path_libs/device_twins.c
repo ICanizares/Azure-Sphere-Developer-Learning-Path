@@ -1,42 +1,42 @@
 #include "device_twins.h"
 
-void SetDesiredState(JSON_Object* desiredProperties, DeviceTwinBinding* deviceTwinBinding);
-void DeviceTwinsReportStatusCallback(int result, void* context);
+void SetDesiredState(JSON_Object* desiredProperties, LP_DeviceTwinBinding* deviceTwinBinding);
+void lp_deviceTwinsReportStatusCallback(int result, void* context);
 bool DeviceTwinUpdateReportedState(char* reportedPropertiesString);
 
 
-DeviceTwinBinding** _deviceTwins = NULL;
+LP_DeviceTwinBinding** _deviceTwins = NULL;
 size_t _deviceTwinCount = 0;
 
 
-void OpenDeviceTwinSet(DeviceTwinBinding* deviceTwins[], size_t deviceTwinCount) {
+void lp_openDeviceTwinSet(LP_DeviceTwinBinding* deviceTwins[], size_t deviceTwinCount) {
 	_deviceTwins = deviceTwins;
 	_deviceTwinCount = deviceTwinCount;
 
 	for (int i = 0; i < _deviceTwinCount; i++) {
-		OpenDeviceTwin(_deviceTwins[i]);
+		lp_openDeviceTwin(_deviceTwins[i]);
 	}
 }
 
-void CloseDeviceTwinSet(void) {
-	for (int i = 0; i < _deviceTwinCount; i++) { CloseDeviceTwin(_deviceTwins[i]); }
+void lp_closeDeviceTwinSet(void) {
+	for (int i = 0; i < _deviceTwinCount; i++) { lp_closeDeviceTwin(_deviceTwins[i]); }
 }
 
-void OpenDeviceTwin(DeviceTwinBinding* deviceTwinBinding) {
-	if (deviceTwinBinding->twinType == TYPE_UNKNOWN) {
-		Log_Debug("\n\nDevice Twin '%s' missing type information.\nInclude .twinType option in DeviceTwinBinding definition.\nExample .twinType=TYPE_BOOL. Valid types include TYPE_BOOL, TYPE_INT, TYPE_FLOAT, TYPE_STRING.\n\n", deviceTwinBinding->twinProperty);
-		Terminate();
+void lp_openDeviceTwin(LP_DeviceTwinBinding* deviceTwinBinding) {
+	if (deviceTwinBinding->twinType == LP_TYPE_UNKNOWN) {
+		Log_Debug("\n\nDevice Twin '%s' missing type information.\nInclude .twinType option in LP_DeviceTwinBinding definition.\nExample .twinType=LP_TYPE_BOOL. Valid types include LP_TYPE_BOOL, LP_TYPE_INT, LP_TYPE_FLOAT, LP_TYPE_STRING.\n\n", deviceTwinBinding->twinProperty);
+		lp_terminate(ExitCode_OpenDeviceTwin);
 	}
 
 	// types JSON and String allocated dynamically when called in azure_iot.c
 	switch (deviceTwinBinding->twinType) {
-	case TYPE_INT:
+	case LP_TYPE_INT:
 		deviceTwinBinding->twinState = malloc(sizeof(int));
 		break;
-	case TYPE_FLOAT:
+	case LP_TYPE_FLOAT:
 		deviceTwinBinding->twinState = malloc(sizeof(float));
 		break;
-	case TYPE_BOOL:
+	case LP_TYPE_BOOL:
 		deviceTwinBinding->twinState = malloc(sizeof(bool));
 		break;
 	default:
@@ -44,7 +44,7 @@ void OpenDeviceTwin(DeviceTwinBinding* deviceTwinBinding) {
 	}
 }
 
-void CloseDeviceTwin(DeviceTwinBinding* deviceTwinBinding) {
+void lp_closeDeviceTwin(LP_DeviceTwinBinding* deviceTwinBinding) {
 	if (deviceTwinBinding->twinState != NULL) {
 		free(deviceTwinBinding->twinState);
 		deviceTwinBinding->twinState = NULL;
@@ -56,7 +56,7 @@ void CloseDeviceTwin(DeviceTwinBinding* deviceTwinBinding) {
 /// </summary>
 /// <param name="payload">contains the Device Twin JSON document (desired and reported)</param>
 /// <param name="payloadSize">size of the Device Twin JSON document</param>
-void TwinCallback(DEVICE_TWIN_UPDATE_STATE updateState, const unsigned char* payload,
+void lp_twinCallback(DEVICE_TWIN_UPDATE_STATE updateState, const unsigned char* payload,
 	size_t payloadSize, void* userContextCallback) {
 	JSON_Value* root_value = NULL;
 	JSON_Object* root_object = NULL;
@@ -106,47 +106,47 @@ cleanup:
 /// <summary>
 ///     Checks to see if the device twin twinProperty(name) is found in the json object. If yes, then act upon the request
 /// </summary>
-void SetDesiredState(JSON_Object* jsonObject, DeviceTwinBinding* deviceTwinBinding) {
+void SetDesiredState(JSON_Object* jsonObject, LP_DeviceTwinBinding* deviceTwinBinding) {
 
 	switch (deviceTwinBinding->twinType) {
-	case TYPE_INT:
+	case LP_TYPE_INT:
 		if (json_object_has_value_of_type(jsonObject, "value", JSONNumber)) {
 			*(int*)deviceTwinBinding->twinState = (int)json_object_get_number(jsonObject, "value");
 
 			if (deviceTwinBinding->handler != NULL) {
 				deviceTwinBinding->handler(deviceTwinBinding);
 			}
-			DeviceTwinReportState(deviceTwinBinding, deviceTwinBinding->twinState);
+			lp_deviceTwinReportState(deviceTwinBinding, deviceTwinBinding->twinState);
 		}
 		break;
-	case TYPE_FLOAT:
+	case LP_TYPE_FLOAT:
 		if (json_object_has_value_of_type(jsonObject, "value", JSONNumber)) {
 			*(float*)deviceTwinBinding->twinState = (float)json_object_get_number(jsonObject, "value");
 
 			if (deviceTwinBinding->handler != NULL) {
 				deviceTwinBinding->handler(deviceTwinBinding);
 			}
-			DeviceTwinReportState(deviceTwinBinding, deviceTwinBinding->twinState);
+			lp_deviceTwinReportState(deviceTwinBinding, deviceTwinBinding->twinState);
 		}
 		break;
-	case TYPE_BOOL:
+	case LP_TYPE_BOOL:
 		if (json_object_has_value_of_type(jsonObject, "value", JSONBoolean)) {
 			*(bool*)deviceTwinBinding->twinState = (bool)json_object_get_boolean(jsonObject, "value");
 
 			if (deviceTwinBinding->handler != NULL) {
 				deviceTwinBinding->handler(deviceTwinBinding);
 			}
-			DeviceTwinReportState(deviceTwinBinding, deviceTwinBinding->twinState);
+			lp_deviceTwinReportState(deviceTwinBinding, deviceTwinBinding->twinState);
 		}
 		break;
-	case TYPE_STRING:
+	case LP_TYPE_STRING:
 		if (json_object_has_value_of_type(jsonObject, "value", JSONString)) {
 			deviceTwinBinding->twinState = (char*)json_object_get_string(jsonObject, "value");
 
 			if (deviceTwinBinding->handler != NULL) {
 				deviceTwinBinding->handler(deviceTwinBinding);
 			}
-			DeviceTwinReportState(deviceTwinBinding, deviceTwinBinding->twinState);
+			lp_deviceTwinReportState(deviceTwinBinding, deviceTwinBinding->twinState);
 			deviceTwinBinding->twinState = NULL;
 		}
 		break;
@@ -155,7 +155,7 @@ void SetDesiredState(JSON_Object* jsonObject, DeviceTwinBinding* deviceTwinBindi
 	}
 }
 
-bool DeviceTwinReportState(DeviceTwinBinding* deviceTwinBinding, void* state) {
+bool lp_deviceTwinReportState(LP_DeviceTwinBinding* deviceTwinBinding, void* state) {
 	int len = 0;
 	size_t reportLen = 10; // initialize to 10 chars to allow for JSON and NULL termination. This is generous by a couple of bytes
 	bool result = false;
@@ -164,13 +164,13 @@ bool DeviceTwinReportState(DeviceTwinBinding* deviceTwinBinding, void* state) {
 		return false;
 	}
 
-	if (!ConnectToAzureIot()) {
+	if (!lp_connectToAzureIot()) {
 		return false;
 	}
 
 	reportLen += strlen(deviceTwinBinding->twinProperty); // allow for twin property name in JSON response
 
-	if (deviceTwinBinding->twinType == TYPE_STRING) {
+	if (deviceTwinBinding->twinType == LP_TYPE_STRING) {
 		reportLen += strlen((char*)state);
 	}
 	else {
@@ -185,26 +185,26 @@ bool DeviceTwinReportState(DeviceTwinBinding* deviceTwinBinding, void* state) {
 	memset(reportedPropertiesString, 0, reportLen);
 
 	switch (deviceTwinBinding->twinType) {
-	case TYPE_INT:
+	case LP_TYPE_INT:
 		*(int*)deviceTwinBinding->twinState = *(int*)state;
 		len = snprintf(reportedPropertiesString, reportLen, "{\"%s\":%d}", deviceTwinBinding->twinProperty,
 			(*(int*)deviceTwinBinding->twinState));
 		break;
-	case TYPE_FLOAT:
+	case LP_TYPE_FLOAT:
 		*(float*)deviceTwinBinding->twinState = *(float*)state;
 		len = snprintf(reportedPropertiesString, reportLen, "{\"%s\":%f}", deviceTwinBinding->twinProperty,
 			(*(float*)deviceTwinBinding->twinState));
 		break;
-	case TYPE_BOOL:
+	case LP_TYPE_BOOL:
 		*(bool*)deviceTwinBinding->twinState = *(bool*)state;
 		len = snprintf(reportedPropertiesString, reportLen, "{\"%s\":%s}", deviceTwinBinding->twinProperty,
 			(*(bool*)deviceTwinBinding->twinState ? "true" : "false"));
 		break;
-	case TYPE_STRING:
+	case LP_TYPE_STRING:
 		deviceTwinBinding->twinState = NULL;
 		len = snprintf(reportedPropertiesString, reportLen, "{\"%s\":\"%s\"}", deviceTwinBinding->twinProperty, (char*)state);
 		break;
-	case TYPE_UNKNOWN:
+	case LP_TYPE_UNKNOWN:
 		Log_Debug("Device Twin Type Unknown");
 		break;
 	default:
@@ -226,8 +226,8 @@ bool DeviceTwinReportState(DeviceTwinBinding* deviceTwinBinding, void* state) {
 
 bool DeviceTwinUpdateReportedState(char* reportedPropertiesString) {
 	if (IoTHubDeviceClient_LL_SendReportedState(
-		GetAzureIotClientHandle(), (unsigned char*)reportedPropertiesString,
-		strlen(reportedPropertiesString), DeviceTwinsReportStatusCallback, 0) != IOTHUB_CLIENT_OK) 
+		lp_getAzureIotClientHandle(), (unsigned char*)reportedPropertiesString,
+		strlen(reportedPropertiesString), lp_deviceTwinsReportStatusCallback, 0) != IOTHUB_CLIENT_OK) 
 	{
 		Log_Debug("ERROR: failed to set reported state for '%s'.\n", reportedPropertiesString);
 		return false;
@@ -237,13 +237,13 @@ bool DeviceTwinUpdateReportedState(char* reportedPropertiesString) {
 		return true;
 	}
 
-	IoTHubDeviceClient_LL_DoWork(GetAzureIotClientHandle());
+	IoTHubDeviceClient_LL_DoWork(lp_getAzureIotClientHandle());
 }
 
 
 /// <summary>
 ///     Callback invoked when the Device Twin reported properties are accepted by IoT Hub.
 /// </summary>
-void DeviceTwinsReportStatusCallback(int result, void* context) {
+void lp_deviceTwinsReportStatusCallback(int result, void* context) {
 	Log_Debug("INFO: Device Twin reported properties update result: HTTP status code %d\n", result);
 }

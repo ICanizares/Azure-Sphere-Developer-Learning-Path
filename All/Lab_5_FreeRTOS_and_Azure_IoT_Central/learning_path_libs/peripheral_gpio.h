@@ -12,9 +12,9 @@
 #include "terminate.h"
 
 typedef enum {
-	DIRECTION_UNKNOWN,
-	INPUT,
-	OUTPUT
+	LP_DIRECTION_UNKNOWN,
+	LP_INPUT,
+	LP_OUTPUT
 } Direction;
 
 struct _peripheralGpio {
@@ -28,12 +28,12 @@ struct _peripheralGpio {
 	bool opened;
 };
 
-typedef struct _peripheralGpio PeripheralGpio;
+typedef struct _peripheralGpio LP_PeripheralGpio;
 
 
-bool OpenPeripheralGpio(PeripheralGpio* peripheral);
-void OpenPeripheralGpioSet(PeripheralGpio** peripheralSet, size_t peripheralSetCount);
-void ClosePeripheralGpioSet(void);
-void ClosePeripheralGpio(PeripheralGpio* peripheral);
-void Gpio_On(PeripheralGpio* peripheral);
-void Gpio_Off(PeripheralGpio* peripheral);
+bool lp_openPeripheralGpio(LP_PeripheralGpio* peripheral);
+void lp_openPeripheralGpioSet(LP_PeripheralGpio** peripheralSet, size_t peripheralSetCount);
+void lp_closePeripheralGpioSet(void);
+void lp_closePeripheralGpio(LP_PeripheralGpio* peripheral);
+void lp_gpioOn(LP_PeripheralGpio* peripheral);
+void lp_gpioOff(LP_PeripheralGpio* peripheral);

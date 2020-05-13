@@ -1,5 +1,4 @@
-#ifndef iot_hub_h
-#define iot_hub_h
+#pragma once
 
 #include "device_twins.h"
 #include "direct_methods.h"
@@ -18,12 +17,10 @@
 
 //extern IOTHUB_DEVICE_CLIENT_LL_HANDLE iothubClientHandle;
 
-bool SendMsg(const char* msg);
-void StartCloudToDevice(void);
-void StopCloudToDevice(void);
-void SetConnectionString(const char* connectionString); // Note, do not use Connection Strings for Production - this is here for lab workaround
-IOTHUB_DEVICE_CLIENT_LL_HANDLE GetAzureIotClientHandle(void);
-bool ConnectToAzureIot(void);
-bool IsNetworkReady(void);
-
-#endif
+bool lp_sendMsg(const char* msg);
+void lp_startCloudToDevice(void);
+void lp_stopCloudToDevice(void);
+void lp_setConnectionString(const char* connectionString); // Note, do not use Connection Strings for Production - this is here for lab workaround
+IOTHUB_DEVICE_CLIENT_LL_HANDLE lp_getAzureIotClientHandle(void);
+bool lp_connectToAzureIot(void);
+bool lp_isNetworkReady(void);

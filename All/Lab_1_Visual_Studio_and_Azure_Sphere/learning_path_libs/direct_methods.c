@@ -1,14 +1,14 @@
 #include "direct_methods.h"
 
-DirectMethodBinding** _directMethods;
+LP_DirectMethodBinding** _directMethods;
 size_t _directMethodCount;
 
-void OpenDirectMethodSet(DirectMethodBinding* directMethods[], size_t directMethodCount) {
+void lp_openDirectMethodSet(LP_DirectMethodBinding* directMethods[], size_t directMethodCount) {
 	_directMethods = directMethods;
 	_directMethodCount = directMethodCount;
 }
 
-void CloseDirectMethodSet(void) {
+void lp_closeDirectMethodSet(void) {
 	_directMethods = NULL;
 	_directMethodCount = 0;
 }
@@ -16,7 +16,7 @@ void CloseDirectMethodSet(void) {
 /*
 This implementation of Direct Methods expects a JSON Payload Object
 */
-int AzureDirectMethodHandler(const char* method_name, const unsigned char* payload, size_t payloadSize,
+int lp_azureDirectMethodHandler(const char* method_name, const unsigned char* payload, size_t payloadSize,
 	unsigned char** responsePayload, size_t* responsePayloadSize, void* userContextCallback) {
 
 	const char* methodSucceededMsg = "Method Succeeded";
@@ -25,13 +25,13 @@ int AzureDirectMethodHandler(const char* method_name, const unsigned char* paylo
 	const char* mallocFailedMsg = "Memory Allocation failed";
 	const char* invalidJsonMsg = "Invalid JSON";
 
-	DirectMethodResponseCode responseCode = METHOD_NOT_FOUND;
+	LP_DirectMethodResponseCode responseCode = LP_METHOD_NOT_FOUND;
 	char* responseMsg = NULL;
 
-	DirectMethodBinding* directMethodBinding = NULL;
+	LP_DirectMethodBinding* directMethodBinding = NULL;
 
 	const char* responseMessage = methodNotFoundMsg;
-	int result = METHOD_NOT_FOUND;
+	int result = LP_METHOD_NOT_FOUND;
 	size_t responseMessageLength;
 
 	JSON_Value* root_value = NULL;
@@ -45,7 +45,7 @@ int AzureDirectMethodHandler(const char* method_name, const unsigned char* paylo
 	char* payLoadString = (char*)malloc(payloadSize + 1);
 	if (payLoadString == NULL) {
 		responseMessage = mallocFailedMsg;
-		result = METHOD_FAILED;
+		result = LP_METHOD_FAILED;
 		goto cleanup;
 	}
 
@@ -55,14 +55,14 @@ int AzureDirectMethodHandler(const char* method_name, const unsigned char* paylo
 	root_value = json_parse_string(payLoadString);
 	if (root_value == NULL) {
 		responseMessage = invalidJsonMsg;
-		result = METHOD_FAILED;
+		result = LP_METHOD_FAILED;
 		goto cleanup;
 	}
 
 	jsonObject = json_value_get_object(root_value);
 	if (jsonObject == NULL) {
 		responseMessage = invalidJsonMsg;
-		result = METHOD_FAILED;
+		result = LP_METHOD_FAILED;
 		goto cleanup;
 	}
 
@@ -74,7 +74,7 @@ int AzureDirectMethodHandler(const char* method_name, const unsigned char* paylo
 		}
 	}
 
-	if (directMethodBinding != NULL && directMethodBinding->handler != NULL) {	// was a DirectMethodBinding found
+	if (directMethodBinding != NULL && directMethodBinding->handler != NULL) {	// was a LP_DirectMethodBinding found
 
 		responseCode = directMethodBinding->handler(jsonObject, directMethodBinding, &responseMsg);
 
@@ -82,13 +82,13 @@ int AzureDirectMethodHandler(const char* method_name, const unsigned char* paylo
 
 		switch (responseCode)
 		{
-		case METHOD_SUCCEEDED:	// 200
+		case LP_METHOD_SUCCEEDED:	// 200
 			responseMessage = strlen(responseMsg) == 0 ? methodSucceededMsg : responseMsg;
 			break;
-		case METHOD_FAILED:		// 500
+		case LP_METHOD_FAILED:		// 500
 			responseMessage = strlen(responseMsg) == 0 ? methodErrorMsg : responseMsg;
 			break;
-		case METHOD_NOT_FOUND:
+		case LP_METHOD_NOT_FOUND:
 			break;
 		}
 	}

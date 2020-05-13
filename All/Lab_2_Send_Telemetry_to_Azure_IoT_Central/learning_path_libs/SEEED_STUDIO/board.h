@@ -6,6 +6,6 @@
 #include <time.h>
 #include "hw/azure_sphere_learning_path.h"
 
-int ReadTelemetry(char* msgBuffer, size_t bufferLen);
-bool InitializeDevKit(void);
-bool CloseDevKit(void);
+int lp_readTelemetry(char* msgBuffer, size_t bufferLen);
+bool lp_initializeDevKit(void);
+bool lp_closeDevKit(void);

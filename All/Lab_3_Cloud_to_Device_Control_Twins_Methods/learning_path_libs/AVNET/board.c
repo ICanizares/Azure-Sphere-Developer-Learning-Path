@@ -4,7 +4,7 @@
 /// <summary>
 ///     Reads telemetry and returns the length of JSON data.
 /// </summary>
-int ReadTelemetry(char * msgBuffer, size_t bufferLen) {
+int lp_readTelemetry(char * msgBuffer, size_t bufferLen) {
 	static int msgId = 0;
 	float temperature;
 	float humidity;
@@ -30,7 +30,7 @@ int ReadTelemetry(char * msgBuffer, size_t bufferLen) {
 	return snprintf(msgBuffer, bufferLen, MsgTemplate, temperature, humidity, pressure, light, msgId++);
 }
 
-bool InitializeDevKit(void) {
+bool lp_initializeDevKit(void) {
 
 	srand((unsigned int)time(NULL)); // seed the random number generator for fake telemetry
 
@@ -43,7 +43,7 @@ bool InitializeDevKit(void) {
 	return true;
 }
 
-bool CloseDevKit(void) {
+bool lp_closeDevKit(void) {
 	closeI2c();
 	return true;
 }

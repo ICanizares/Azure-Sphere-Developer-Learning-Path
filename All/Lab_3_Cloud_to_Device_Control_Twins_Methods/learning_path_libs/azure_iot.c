@@ -21,20 +21,20 @@ static Timer cloudToDeviceTimer = {
 	.handler = &AzureCloudToDeviceHandler
 };
 
-void StartCloudToDevice(void) {
+void lp_startCloudToDevice(void) {
 	if (cloudToDeviceTimer.eventLoopTimer == NULL) {
-		StartTimer(&cloudToDeviceTimer);
-		SetOneShotTimer(&cloudToDeviceTimer, &(struct timespec){1, 0});
+		lp_startTimer(&cloudToDeviceTimer);
+		lp_setOneShotTimer(&cloudToDeviceTimer, &(struct timespec){1, 0});
 	}
 }
 
-void StopCloudToDevice(void) {
+void lp_stopCloudToDevice(void) {
 	if (cloudToDeviceTimer.eventLoopTimer != NULL) {
-		StopTimer(&cloudToDeviceTimer);
+		lp_stopTimer(&cloudToDeviceTimer);
 	}
 }
 
-void SetConnectionString(const char* connectionString) {
+void lp_setConnectionString(const char* connectionString) {
 	_connectionString = connectionString;
 }
 
@@ -54,7 +54,7 @@ void AzureCloudToDeviceHandler(EventLoopTimer* eventLoopTimer) {
 	static int period = 1; //  initialize period to 1 second
 
 	if (ConsumeEventLoopTimerEvent(eventLoopTimer) != 0) {
-		Terminate();
+		lp_terminate(ExitCode_AzureCloudToDeviceHandler);
 		return;
 	}
 
@@ -63,22 +63,22 @@ void AzureCloudToDeviceHandler(EventLoopTimer* eventLoopTimer) {
 		period = 1;
 	}
 	else {
-		if (ConnectToAzureIot()) {
+		if (lp_connectToAzureIot()) {
 			period = 1;
 		}
 		else {
 			if (period < maxPeriodSeconds) { period++; }
 		}
 	}
-	SetOneShotTimer(&cloudToDeviceTimer, &(struct timespec){period, 0});
+	lp_setOneShotTimer(&cloudToDeviceTimer, &(struct timespec){period, 0});
 }
 
-bool SendMsg(const char* msg) {
+bool lp_sendMsg(const char* msg) {
 	if (strlen(msg) < 1) {
 		return true;
 	}
 
-	if (!ConnectToAzureIot()) {
+	if (!lp_connectToAzureIot()) {
 		return false;
 	}
 
@@ -105,7 +105,7 @@ bool SendMsg(const char* msg) {
 	return true;
 }
 
-bool IsNetworkReady(void) {
+bool lp_isNetworkReady(void) {
 	bool isNetworkReady = false;
 	if (Networking_IsNetworkingReady(&isNetworkReady) != -1) {
 		if (isNetworkReady) {
@@ -123,7 +123,7 @@ bool IsNetworkReady(void) {
 }
 
 
-IOTHUB_DEVICE_CLIENT_LL_HANDLE GetAzureIotClientHandle(void) {
+IOTHUB_DEVICE_CLIENT_LL_HANDLE lp_getAzureIotClientHandle(void) {
 	return iothubClientHandle;
 }
 
@@ -131,8 +131,8 @@ IOTHUB_DEVICE_CLIENT_LL_HANDLE GetAzureIotClientHandle(void) {
 /// <summary>
 ///     Check if network connected or already connected, else sets up connection to Azure IoT
 /// </summary>
-bool ConnectToAzureIot(void) {
-	if (!IsNetworkReady()) {
+bool lp_connectToAzureIot(void) {
+	if (!lp_isNetworkReady()) {
 		return false;
 	}
 	else {
@@ -182,8 +182,8 @@ bool SetupAzureClient() {
 
 	iothubAuthenticated = true;
 
-	IoTHubDeviceClient_LL_SetDeviceTwinCallback(iothubClientHandle, TwinCallback, NULL);
-	IoTHubDeviceClient_LL_SetDeviceMethodCallback(iothubClientHandle, AzureDirectMethodHandler, NULL);
+	IoTHubDeviceClient_LL_SetDeviceTwinCallback(iothubClientHandle, lp_twinCallback, NULL);
+	IoTHubDeviceClient_LL_SetDeviceMethodCallback(iothubClientHandle, lp_azureDirectMethodHandler, NULL);
 	IoTHubDeviceClient_LL_SetConnectionStatusCallback(iothubClientHandle, HubConnectionStatusCallback, NULL);
 
 	IoTHubDeviceClient_LL_DoWork(iothubClientHandle);

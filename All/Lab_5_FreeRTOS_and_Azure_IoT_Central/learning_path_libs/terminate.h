@@ -1,7 +1,10 @@
-#include "globals.h"
+#pragma once
 
-void RegisterTerminationHandler(void);
-void TerminationHandler(int signalNumber);
-void Terminate(void);
-bool IsTerminationRequired(void);
-int GetTerminationExitCode(void);
+#include "globals.h"
+#include "exit_codes.h"
+
+void lp_registerTerminationHandler(void);
+void lp_terminationHandler(int signalNumber);
+void lp_terminate(int exitCode);
+bool lp_isTerminationRequired(void);
+int lp_getTerminationExitCode(void);

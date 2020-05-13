@@ -1,5 +1,4 @@
-#ifndef models_h
-#define models_h
+#pragma once
 
 #include <signal.h>
 #include <stdbool.h>
@@ -16,7 +15,5 @@ extern char rtAppComponentId[RT_APP_COMPONENT_LENGTH];  //initialized from cmdli
 
 //extern volatile sig_atomic_t terminationRequired;
 extern bool realTelemetry;		// flag for real or fake telemetry
-void ProcessCmdArgs(int argc, char* argv[]);
-char* GetCurrentUtc(char* buffer, size_t bufferSize);
-
-#endif
+void lp_processCmdArgs(int argc, char* argv[]);
+char* lp_getCurrentUtc(char* buffer, size_t bufferSize);

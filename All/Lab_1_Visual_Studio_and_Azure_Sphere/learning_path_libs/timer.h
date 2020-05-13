@@ -11,11 +11,11 @@ typedef struct {
 	const char* name;
 } Timer;
 
-void StartTimerSet(Timer* timerSet[], size_t timerCount);
-void StopTimerSet(void);
-bool StartTimer(Timer* timer);
-void StopTimer(Timer* timer);
-EventLoop* GetTimerEventLoop(void);
-void StopTimerEventLoop(void);
-bool ChangeTimer(Timer* timer, const struct timespec* period);
-bool SetOneShotTimer(Timer* timer, const struct timespec* delay);
+void lp_startTimerSet(Timer* timerSet[], size_t timerCount);
+void lp_stopTimerSet(void);
+bool lp_startTimer(Timer* timer);
+void lp_stopTimer(Timer* timer);
+EventLoop* lp_getTimerEventLoop(void);
+void lp_stopTimerEventLoop(void);
+bool lp_changeTimer(Timer* timer, const struct timespec* period);
+bool lp_setOneShotTimer(Timer* timer, const struct timespec* delay);

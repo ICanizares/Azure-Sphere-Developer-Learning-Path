@@ -20,7 +20,6 @@ add_subdirectory("learning_path_libs" out)
 
 set(Source
     "main.c"
-    "exit_codes.h"
 )
 source_group("Source" FILES ${Source})
 

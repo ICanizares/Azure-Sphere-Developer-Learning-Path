@@ -8,7 +8,7 @@ int sockFd = -1;
 static EventRegistration* socketEventReg = NULL;
 
 
-bool SendInterCoreMessage(const char* msg) {
+bool lp_sendInterCoreMessage(const char* msg) {
 
 	if (sockFd == -1) {
 		Log_Debug("Socket not initialized");
@@ -24,7 +24,7 @@ bool SendInterCoreMessage(const char* msg) {
 	return true;
 }
 
-int EnableInterCoreCommunications(const char* rtAppComponentId, void (*interCoreCallback)(char*)) {
+int lp_enableInterCoreCommunications(const char* rtAppComponentId, void (*interCoreCallback)(char*)) {
 	_interCoreCallback = interCoreCallback;
 	// Open connection to real-time capable application.
 	sockFd = Application_Connect(rtAppComponentId);
@@ -42,7 +42,7 @@ int EnableInterCoreCommunications(const char* rtAppComponentId, void (*interCore
 	}
 
 	// Register handler for incoming messages from real-time capable application.
-	socketEventReg = EventLoop_RegisterIo(GetTimerEventLoop(), sockFd, EventLoop_Input, SocketEventHandler,
+	socketEventReg = EventLoop_RegisterIo(lp_getTimerEventLoop(), sockFd, EventLoop_Input, SocketEventHandler,
 		/* context */ NULL);
 	if (socketEventReg == NULL) {
 		Log_Debug("ERROR: Unable to register socket event: %d (%s)\n", errno, strerror(errno));
@@ -58,7 +58,7 @@ int EnableInterCoreCommunications(const char* rtAppComponentId, void (*interCore
 /// </summary>
 void SocketEventHandler(EventLoop* el, int fd, EventLoop_IoEvents events, void* context) {
 	if (!ProcessMsg()) {
-		Terminate();
+		lp_terminate(ExitCode_InterCoreHandler);
 	}
 }
 
