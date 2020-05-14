@@ -1,38 +1,37 @@
-﻿
-/*
-	Please read the disclaimer and the developer board selection section below
-
-
-	DISCLAIMER
-
-	The learning_path_libs functions provided in the learning_path_libs folder:
-
-		1. are NOT supported Azure Sphere APIs.
-		2. are prefixed with lp_, typedefs are prefixed with LP_
-		3. are built from the Azure Sphere SDK Samples at https://github.com/Azure/azure-sphere-samples
-		4. are not intended as a substitute for understanding the Azure Sphere SDK Samples.
-		5. aim to follow best practices as demonstrated by the Azure Sphere SDK Samples.
-		6. are provided as is and as a convenience to aid the Azure Sphere Developer Learning experience.
-
-
-	DEVELOPER BOARD SELECTION
-
-	The following developer boards are supported.
-
-		1. AVNET Azure Sphere Starter Kit.
-		2. Seeed Studio Azure Sphere MT3620 Development Kit aka Reference Design Board or rdb.
-		3. Seeed Studio Seeed Studio MT3620 Mini Dev Board.
-
-	ENABLE YOUR DEVELOPER BOARD
-
-	Each Azure Sphere developer board manufacturer maps pins differently. You need to select the configuration that matches your board.
-
-	Follow these steps:
-
-		1. Open CMakeLists.txt.
-		2. Uncomment the set command that matches your developer board.
-		3. Click File, then Save to save the CMakeLists.txt file which will auto generate the CMake Cache.
-*/
+﻿/*
+ *   Please read the disclaimer and the developer board selection section below
+ *
+ *
+ *   DISCLAIMER
+ *
+ *   The learning_path_libs functions provided in the learning_path_libs folder:
+ *
+ *	   1. are NOT supported Azure Sphere APIs.
+ *	   2. are prefixed with lp_, typedefs are prefixed with LP_
+ *	   3. are built from the Azure Sphere SDK Samples at https://github.com/Azure/azure-sphere-samples
+ *	   4. are not intended as a substitute for understanding the Azure Sphere SDK Samples.
+ *	   5. aim to follow best practices as demonstrated by the Azure Sphere SDK Samples.
+ *	   6. are provided as is and as a convenience to aid the Azure Sphere Developer Learning experience.
+ *
+ *
+ *   DEVELOPER BOARD SELECTION
+ *
+ *   The following developer boards are supported.
+ *
+ *	   1. AVNET Azure Sphere Starter Kit.
+ *	   2. Seeed Studio Azure Sphere MT3620 Development Kit aka Reference Design Board or rdb.
+ *	   3. Seeed Studio Seeed Studio MT3620 Mini Dev Board.
+ *
+ *   ENABLE YOUR DEVELOPER BOARD
+ *
+ *   Each Azure Sphere developer board manufacturer maps pins differently. You need to select the configuration that matches your board.
+ *
+ *   Follow these steps:
+ *
+ *	   1. Open CMakeLists.txt.
+ *	   2. Uncomment the set command that matches your developer board.
+ *	   3. Click File, then Save to save the CMakeLists.txt file which will auto generate the CMake Cache.
+ */
 
 #include "hw/azure_sphere_learning_path.h"
 

@@ -88,17 +88,20 @@ static uint32_t sharedBufSize = 0;
 /* Application Hooks */
 /******************************************************************************/
 // Hook for "stack over flow".
-void vApplicationStackOverflowHook(TaskHandle_t xTask, char* pcTaskName) {
+void vApplicationStackOverflowHook(TaskHandle_t xTask, char* pcTaskName)
+{
 	printf("%s: %s\n", __func__, pcTaskName);
 }
 
 // Hook for "memory allocation failed".
-void vApplicationMallocFailedHook(void) {
+void vApplicationMallocFailedHook(void)
+{
 	printf("%s\n", __func__);
 }
 
 // Hook for "printf".
-void _putchar(char character) {
+void _putchar(char character)
+{
 	mtk_os_hal_uart_put_char(UART_PORT_NUM, character);
 	if (character == '\n')
 		mtk_os_hal_uart_put_char(UART_PORT_NUM, '\r');
@@ -107,29 +110,34 @@ void _putchar(char character) {
 /******************************************************************************/
 /* Functions */
 /******************************************************************************/
-static int gpio_output(u8 gpio_no, u8 level) {
+static int gpio_output(u8 gpio_no, u8 level)
+{
 	int ret;
 
 	ret = mtk_os_hal_gpio_request(gpio_no);
-	if (ret != 0) {
+	if (ret != 0)
+	{
 		printf("request gpio[%d] fail\n", gpio_no);
 		return ret;
 	}
 	mtk_os_hal_gpio_set_direction(gpio_no, OS_HAL_GPIO_DIR_OUTPUT);
 	mtk_os_hal_gpio_set_output(gpio_no, level);
 	ret = mtk_os_hal_gpio_free(gpio_no);
-	if (ret != 0) {
+	if (ret != 0)
+	{
 		printf("free gpio[%d] fail\n", gpio_no);
 		return ret;
 	}
 	return 0;
 }
 
-static int gpio_input(u8 gpio_no, os_hal_gpio_data* pvalue) {
+static int gpio_input(u8 gpio_no, os_hal_gpio_data* pvalue)
+{
 	u8 ret;
 
 	ret = mtk_os_hal_gpio_request(gpio_no);
-	if (ret != 0) {
+	if (ret != 0)
+	{
 		printf("request gpio[%d] fail\n", gpio_no);
 		return ret;
 	}
@@ -139,7 +147,8 @@ static int gpio_input(u8 gpio_no, os_hal_gpio_data* pvalue) {
 	mtk_os_hal_gpio_get_input(gpio_no, pvalue);
 
 	ret = mtk_os_hal_gpio_free(gpio_no);
-	if (ret != 0) {
+	if (ret != 0)
+	{
 		printf("free gpio[%d] fail\n", gpio_no);
 		return ret;
 	}
@@ -147,17 +156,20 @@ static int gpio_input(u8 gpio_no, os_hal_gpio_data* pvalue) {
 	return 0;
 }
 
-static void ButtonTask(void* pParameters) {
+static void ButtonTask(void* pParameters)
+{
 	static os_hal_gpio_data oldStateButtonA = OS_HAL_GPIO_DATA_LOW;
 	static os_hal_gpio_data oldStateButtonB = OS_HAL_GPIO_DATA_LOW;
 	os_hal_gpio_data value = 0;
 
 	printf("GPIO Task Started\n");
-	while (1) {
+	while (1)
+	{
 
 		// Get Button_A status
 		gpio_input(BUTTON_A, &value);
-		if ((value != oldStateButtonA) && (value == OS_HAL_GPIO_DATA_LOW)) {
+		if ((value != oldStateButtonA) && (value == OS_HAL_GPIO_DATA_LOW))
+		{
 			buttonA_Pressed = true;
 			blinkIntervalIndex = (blinkIntervalIndex + 1) % numBlinkIntervals;
 		}
@@ -165,7 +177,8 @@ static void ButtonTask(void* pParameters) {
 
 		// Get Button_B status
 		gpio_input(BUTTON_B, &value);
-		if ((value != oldStateButtonB) && (value == OS_HAL_GPIO_DATA_LOW)) {
+		if ((value != oldStateButtonB) && (value == OS_HAL_GPIO_DATA_LOW))
+		{
 			buttonB_Pressed = true;
 		}
 		oldStateButtonB = value;
@@ -175,38 +188,47 @@ static void ButtonTask(void* pParameters) {
 	}
 }
 
-static void PeriodicTask(void* pParameters) {
-	while (1) {
+static void PeriodicTask(void* pParameters)
+{
+	while (1)
+	{
 		vTaskDelay(pdMS_TO_TICKS(blinkIntervalsMs[blinkIntervalIndex]));
 		xSemaphoreGive(LEDSemphr);
 	}
 }
 
-static void LedTask(void* pParameters) {
+static void LedTask(void* pParameters)
+{
 	BaseType_t rt;
 
-	while (1) {
+	while (1)
+	{
 		rt = xSemaphoreTake(LEDSemphr, portMAX_DELAY);
-		if (rt == pdPASS) {
+		if (rt == pdPASS)
+		{
 			BuiltInLedOn = !BuiltInLedOn;
 			gpio_output(LED1, BuiltInLedOn);
 		}
 	}
 }
 
-static void RTCoreMsgTask(void* pParameters) {
+static void RTCoreMsgTask(void* pParameters)
+{
 	bool HLAppReady = false;
 
-	while (1) {
+	while (1)
+	{
 		dataSize = sizeof(buf);
 		int r = DequeueData(outbound, inbound, sharedBufSize, buf, &dataSize);
 
 		//if (!(r == -1 || dataSize < payloadStart)) {
-		if (r == 0 && dataSize > payloadStart) {
+		if (r == 0 && dataSize > payloadStart)
+		{
 			HLAppReady = true;
 		}
 
-		if (buttonA_Pressed && HLAppReady) {
+		if (buttonA_Pressed && HLAppReady)
+		{
 			const char msg[] = "ButtonA";
 			strncpy((char*)buf + payloadStart, msg, sizeof buf - payloadStart);
 			dataSize = payloadStart + sizeof msg - 1;
@@ -215,7 +237,8 @@ static void RTCoreMsgTask(void* pParameters) {
 			buttonA_Pressed = false;
 		}
 
-		if (buttonB_Pressed && HLAppReady) {
+		if (buttonB_Pressed && HLAppReady)
+		{
 			const char msg[] = "ButtonB";
 			strncpy((char*)buf + payloadStart, msg, sizeof buf - payloadStart);
 			dataSize = payloadStart + sizeof msg - 1;
@@ -229,7 +252,8 @@ static void RTCoreMsgTask(void* pParameters) {
 	}
 }
 
-_Noreturn void RTCoreMain(void) {
+_Noreturn void RTCoreMain(void)
+{
 	// Setup Vector Table
 	NVIC_SetupVectorTable();
 
@@ -239,8 +263,10 @@ _Noreturn void RTCoreMain(void) {
 
 
 	// Initialize Inter-Core Communications
-	if (GetIntercoreBuffers(&outbound, &inbound, &sharedBufSize) == -1) {
-		for (;;) {
+	if (GetIntercoreBuffers(&outbound, &inbound, &sharedBufSize) == -1)
+	{
+		for (;;)
+		{
 			// empty.
 		}
 	}
@@ -253,7 +279,8 @@ _Noreturn void RTCoreMain(void) {
 	xTaskCreate(RTCoreMsgTask, "RTCore Msg Task", APP_STACK_SIZE_BYTES, NULL, 2, NULL);
 	vTaskStartScheduler();
 
-	for (;;) {
+	for (;;)
+	{
 		__asm__("wfi");
 	}
 }
