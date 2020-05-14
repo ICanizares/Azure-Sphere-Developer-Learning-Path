@@ -4,7 +4,16 @@
       "environment": "AzureSphere",
 
       "AzureSphereTargetApiSet": "5+Beta2004",
-      "AzureSphereTargetHardwareDefinitionDirectory": "..\\oem\\Hardware\\avnet_mt3620_sk",
+
+      // Comment out the following line with two slashes if not using the AVNET Azure Sphere Starter Kit
+      "AzureSphereTargetHardwareDefinitionDirectory": "../Hardware/avnet_mt3620_sk",
+
+      // Uncomment the line below by remove the two slashes to enable the Seeed Studio Reference Design Board
+      // "AzureSphereTargetHardwareDefinitionDirectory": "..\\oem\\Hardware\\mt3620_rdb",
+
+      // Uncomment the following include statement if using Seeed Studio Mini Development Board
+      // "AzureSphereTargetHardwareDefinitionDirectory": "..\\oem\\Hardware\\seeed_mt3620_mdb",
+
       "AzureSphereTargetHardwareDefinition": "azure_sphere_learning_path.json"
     }
   ],
