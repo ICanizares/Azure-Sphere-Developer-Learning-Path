@@ -1,20 +1,26 @@
 #  Copyright (c) Microsoft Corporation. All rights reserved.
 #  Licensed under the MIT License.
 
-cmake_minimum_required (VERSION 3.10)
-project (AzureSphereIoTCentral C)
-
+###################################################################################################################
 
 # Select your developer board by removing the # tag from the beginning of the line
 
- set(AVNET TRUE "AVNET Azure Sphere Starter Kit")                
+# The default board selected is the AVNET Starter Kit.
+
+# If you are NOT using the AVNET board be sure to comment out the AVNET board
+
+set(AVNET TRUE "AVNET Azure Sphere Starter Kit")                
 # set(SEEED_STUDIO_RDB TRUE "Seeed Studio Azure Sphere MT3620 Development Kit (aka Reference Design Board or rdb)")
 # set(SEEED_STUDIO_MINI TRUE "Seeed Studio Azure Sphere MT3620 Mini Dev Board")
 
+###################################################################################################################
 
+cmake_minimum_required (VERSION 3.10)
+project (AzureSphereIoTCentral C)
 
 azsphere_configure_tools(TOOLS_REVISION "20.04")
 azsphere_configure_api(TARGET_API_SET "5+Beta2004")
+
 
 add_subdirectory("learning_path_libs" out)
 
@@ -54,9 +60,6 @@ set(ALL_FILES
     ${Oem}
 )
 
-
-
-
 # Create executable
 add_executable(${PROJECT_NAME} ${ALL_FILES})
 target_compile_definitions(${PROJECT_NAME} PUBLIC AZURE_IOT_HUB_CONFIGURED)
@@ -70,7 +73,7 @@ set_source_files_properties(learning_path_libs/AVNET/imu_temp_pressure.c PROPERT
 set_source_files_properties(learning_path_libs/AVNET/imu_temp_pressure.c PROPERTIES COMPILE_FLAGS -Wno-incompatible-pointer-types)
 set_source_files_properties(learning_path_libs/AVNET/imu_temp_pressure.c PROPERTIES COMPILE_FLAGS -Wno-conversion)
 
-# Uncomment line below for AVNET Starter Kit
+
 if(AVNET)
     azsphere_target_hardware_definition(${PROJECT_NAME} TARGET_DIRECTORY "../Hardware/avnet_mt3620_sk" TARGET_DEFINITION "azure_sphere_learning_path.json")
 endif(AVNET)
@@ -82,7 +85,5 @@ endif()
 if (SEEED_STUDIO_MINI)
     azsphere_target_hardware_definition(${PROJECT_NAME} TARGET_DIRECTORY "../Hardware/seeed_mt3620_mdb" TARGET_DEFINITION "azure_sphere_learning_path.json")
 endif(SEEED_STUDIO_MINI)
-
-# Uncomment line below for SEED Studio Mini Developer Board
 
 azsphere_target_add_image_package(${PROJECT_NAME})
