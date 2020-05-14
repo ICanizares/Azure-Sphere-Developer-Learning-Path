@@ -38,6 +38,18 @@ This lab assumes you have completed **Lab 0: Lab set up, installation and config
 
 ---
 
+## Introduction to the Learning Path Labs
+
+There are a number of Learning Path libraries that support these labs. These Learning Path C functions are prefixed with **lp_**, typedefs and enums are prefixed with **LP_**. 
+
+The Learning Path libraries are open source and contributions are welcome.
+
+The Learning Path libraries are built from the [Azure Sphere Samples](https://github.com/Azure/azure-sphere-samples) and aim to demonstrate best practices.
+
+The Learning Path libraries are **not** part of the official Azure Sphere libraries or samples.
+
+---
+
 ## Tutorial Overview
 
 1. Understand Peripheral and Event Timer concepts.
@@ -101,7 +113,7 @@ You can find detailed peripheral interface information for each board by clickin
 
 In the Azure Sphere Learning Path labs there are several Peripheral variables declared, including LEDs, buttons, and a relay. Variables of type **LP_PERIPHERAL_GPIO** declare a GPIO model for **input** and **output** of single pin peripherals, such as LEDs, buttons, reed switches, and relays.
 
-A Peripheral variable holds the GPIO pin number, the initial state of the pin when the program starts, whether the pin logic needs to be inverted, and the function called to open the peripheral.
+A GPIO Peripheral variable holds the GPIO pin number, the initial state of the pin when the program starts, whether the pin logic needs to be inverted, and the function called to open the peripheral.
 
 The following example declares an LED **output** peripheral.
 
@@ -111,7 +123,7 @@ static LP_PERIPHERAL_GPIO led1 = {
 	.direction = LP_OUTPUT, // for OUTPUT
 	.initialState = GPIO_Value_Low, // Set the initial state on the pin when opened
 	.invertPin = true, // Should the switching logic be reverse for on/off, high/low
-	.initialise = OpenPeripheral, // The function to be called to open the GPIO Pin
+	.initialise = lp_openPeripheral, // The function to be called to open the GPIO Pin
 	.name = "led1" // An arbitrary name for the peripheral
 };
 ```
@@ -122,7 +134,7 @@ The following example declares a button **input** peripheral.
 static LP_PERIPHERAL_GPIO buttonA = {
 	.pin = BUTTON_A,
 	.direction = LP_INPUT, 	// for INPUT
-	.initialise = OpenPeripheral,
+	.initialise = lp_openPeripheral,
 	.name = "buttonA"
 };
 ```
@@ -157,7 +169,7 @@ The following is the implementation of the **MeasureSensorHandler** handler func
 /// </summary>
 static void MeasureSensorHandler(EventLoopTimer* eventLoopTimer) {
 	if (ConsumeEventLoopTimerEvent(eventLoopTimer) != 0) {
-		Terminate();
+		lp_terminate(ExitCode_ConsumeEventLoopTimeEvent);
 		return;
 	}
 	if (lp_readTelemetry(msgBuffer, JSON_MESSAGE_BYTES) > 0) {
@@ -205,7 +217,7 @@ When the one-shot timer triggers, the handler function **Led2OffHandler** is cal
 /// </summary>
 static void Led2OffHandler(EventLoopTimer* eventLoopTimer) {
 	if (ConsumeEventLoopTimerEvent(eventLoopTimer) != 0) {
-		Terminate();
+		lp_terminate(ExitCode_ConsumeEventLoopTimeEvent);
 		return;
 	}
 	lp_gpioOff(&led2);
@@ -243,7 +255,7 @@ static LP_PERIPHERAL_GPIO fanControl = {
 	.direction = LP_OUTPUT, // for OUTPUT
 	.initialState = GPIO_Value_Low,  // Set the initial state on the pin when opened
 	.invertPin = true,  // Should the switching logic be reverse for on/off, high/low
-	.initialise = OpenPeripheral,  // The function to be called to open the GPIO Pin
+	.initialise = lp_openPeripheral,  // The function to be called to open the GPIO Pin
 	.name = "FanControl"  // An arbitrary name for the senor.
 };
 
@@ -276,16 +288,16 @@ Ensure you have followed all the instructions in the [lab set-up guide](../Lab_0
 
 ![](resources/visual-studio-open-project.png)
 
-### Step 4: Select your developer board configuration
+### Step 4: Set your developer board configuration
 
-Select the developer board. These labs supports developer boards from AVNET and Seeed Studio. You need to set the configuration that matches your developer board.
+These labs supports developer boards from AVNET and Seeed Studio. You need to set the configuration that matches your developer board.
 
 1. Open CMakeList.txt
 2. The default board configuration is the AVNET board. If you are NOT using this board then add a # at the beginning of the AVNET line to disable.
 2. Uncomment the **set** command that corresponds to your Azure Sphere developer board.
 3. Save the file. This will auto generate the CMake cache.
 
-![](resources/cmakelist-set-board-configuration.png)
+	![](resources/cmakelist-set-board-configuration.png)
 
 ### Step 5: Verify the Project Opened Correctly
 
@@ -329,11 +341,7 @@ From Visual Studio, open the **app_manifest.json** file. The resources this appl
 
 Each Azure Sphere manufacturer maps pins differently. Follow these steps to understand how the pins are mapped for your developer board.
 
-1. Ensure you have the **main.c** file open. Place the cursor on the line that reads **#include "../oem/board.h"**, then press <kbd>F12</kbd> to open the header file.
-
-	![](resources/visual-studio-open-board.png)
-
-2. From the **board.h** file, place the cursor on the line that includes **azure_sphere_learning_path.h**, then press <kbd>F12</kbd>.
+1. Ensure you have the **main.c** file open. Place the cursor on the line that reads **#include "hw/azure_sphere_learning_path.h"**, then press <kbd>F12</kbd> to open the header file.
 
 	![](resources/visual-studio-open-azure-sphere-learning-path-pin-mappings.png)
 
@@ -375,11 +383,9 @@ Each Azure Sphere manufacturer maps pins differently. Follow these steps to unde
 	#define RELAY AVNET_MT3620_SK_GPIO0
 	```
 
-
-
 4. Next, click on the **main.c tab** to bring main.c into focus.
 
-	![](resources/visual-studio-open-main-tab.png)
+	![](resources/visual-studio-open-main.png)
 
 ---
 
