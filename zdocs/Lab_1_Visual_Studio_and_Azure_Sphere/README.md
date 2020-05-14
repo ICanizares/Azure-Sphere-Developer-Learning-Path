@@ -99,16 +99,16 @@ You can find detailed peripheral interface information for each board by clickin
 
 ## Input and Output Peripherals
 
-In the Azure Sphere Learning Path labs there are several Peripheral variables declared, including LEDs, buttons, and a relay. Variables of type **Peripheral** declare a GPIO model for **input** and **output** of single pin peripherals, such as LEDs, buttons, reed switches, and relays.
+In the Azure Sphere Learning Path labs there are several Peripheral variables declared, including LEDs, buttons, and a relay. Variables of type **LP_PERIPHERAL_GPIO** declare a GPIO model for **input** and **output** of single pin peripherals, such as LEDs, buttons, reed switches, and relays.
 
 A Peripheral variable holds the GPIO pin number, the initial state of the pin when the program starts, whether the pin logic needs to be inverted, and the function called to open the peripheral.
 
 The following example declares an LED **output** peripheral.
 
 ```c
-static Peripheral led1 = {
+static LP_PERIPHERAL_GPIO led1 = {
 	.pin = LED1, // The GPIO pin number
-	.direction = OUTPUT, // for OUTPUT
+	.direction = LP_OUTPUT, // for OUTPUT
 	.initialState = GPIO_Value_Low, // Set the initial state on the pin when opened
 	.invertPin = true, // Should the switching logic be reverse for on/off, high/low
 	.initialise = OpenPeripheral, // The function to be called to open the GPIO Pin
@@ -119,9 +119,9 @@ static Peripheral led1 = {
 The following example declares a button **input** peripheral.
 
 ```c
-static Peripheral buttonA = {
+static LP_PERIPHERAL_GPIO buttonA = {
 	.pin = BUTTON_A,
-	.direction = INPUT, 	// for INPUT
+	.direction = LP_INPUT, 	// for INPUT
 	.initialise = OpenPeripheral,
 	.name = "buttonA"
 };
@@ -137,12 +137,12 @@ The labs use event timers extensively, so there is a generalized model to simpli
 
 #### Periodic Timers
 
-The following example is a variable named **measureSensorTimer** of type **Timer**. This event timer is initialized with a period of 10 seconds **{ 10, 0 }**. When the event timer triggers, the handler function **MeasureSensorHandler** is called to implement the action.
+The following example is a variable named **measureSensorTimer** of type **LP_TIMER**. This event timer is initialized with a period of 10 seconds **{ 10, 0 }**. When the event timer triggers, the handler function **MeasureSensorHandler** is called to implement the action.
 
 > There are two values used to initialize the **.period** variable. The first is the number of seconds, followed by the number of nanoseconds. If you wanted the timer to trigger events every half a second (500 milliseconds), you would set the .period to be { 0, 500000000 }.
 
 ```c
-static Timer measureSensorTimer = {
+static LP_TIMER measureSensorTimer = {
 	.period = { 10, 0 },	// Fire the timer event every 10 seconds + zero nanoseconds.
 	.name = "measureSensorTimer",	// An arbitrary name for the timer, used for error handling
 	.handler = MeasureSensorHandler	// The function handler called when the timer triggers.
@@ -160,7 +160,7 @@ static void MeasureSensorHandler(EventLoopTimer* eventLoopTimer) {
 		Terminate();
 		return;
 	}
-	if (ReadTelemetry(msgBuffer, JSON_MESSAGE_BYTES) > 0) {
+	if (lp_readTelemetry(msgBuffer, JSON_MESSAGE_BYTES) > 0) {
 		Log_Debug("%s\n", msgBuffer);
 		Led2On();
 	}
@@ -173,10 +173,10 @@ The following code uses a one-shot timer to blink an LED once when a button is p
 
 The advantage of this event-driven pattern is that the device can continue to service other events such as checking if a user has pressed a button.
 
-The following is an example of a one-shot timer. The variable named **led2BlinkOffOneShotTimer** is of type **Timer**. This timer is initialized with a period of { 0, 0 }. Timers initialized with a period of 0 seconds are one-shot timers.
+The following is an example of a one-shot timer. The variable named **led2BlinkOffOneShotTimer** is of type **LP_TIMER**. This timer is initialized with a period of { 0, 0 }. Timers initialized with a period of 0 seconds are one-shot timers.
 
 ```c
-static Timer led2BlinkOffOneShotTimer = {
+static LP_TIMER led2BlinkOffOneShotTimer = {
 	.period = { 0, 0 },
 	.name = "led2BlinkOffOneShotTimer",
 	.handler = Led2OffHandler
@@ -192,8 +192,8 @@ In the **Led2On** function, led2 is turned on, then a one-shot timer is set by c
 /// Turn on LED2 and set a one-shot timer to turn LED2 off
 /// </summary>
 static void Led2On(void) {
-	Gpio_On(&led2);
-	SetOneShotTimer(&led2BlinkOffOneShotTimer, &led2BlinkPeriod);
+	lp_gpioOn(&led2);
+	lp_setOneShotTimer(&led2BlinkOffOneShotTimer, &led2BlinkPeriod);
 }
 ```
 
@@ -208,7 +208,7 @@ static void Led2OffHandler(EventLoopTimer* eventLoopTimer) {
 		Terminate();
 		return;
 	}
-	Gpio_Off(&led2);
+	lp_gpioOff(&led2);
 }
 ```
 
@@ -217,8 +217,8 @@ static void Led2OffHandler(EventLoopTimer* eventLoopTimer) {
 Peripherals and timers referenced in a **Set** will be automatically opened and closed.
 
 ```c
-Peripheral* peripheralSet[] = { &buttonA, &buttonB, &led1, &led2, &networkConnectedLed };
-Timer* timerSet[] = { &led1BlinkTimer, &led2BlinkOffOneShotTimer, &buttonPressCheckTimer, &networkConnectionStatusTimer, &measureSensorTimer };
+LP_PERIPHERAL_GPIO* peripheralSet[] = { &buttonA, &buttonB, &led1, &led2, &networkConnectedLed };
+LP_TIMER* timerSet[] = { &led1BlinkTimer, &led2BlinkOffOneShotTimer, &buttonPressCheckTimer, &networkConnectionStatusTimer, &measureSensorTimer };
 ```
 
 These sets are referenced when calling **OpenPeripheralSet**, and **StartTimerSet** from the **InitPeripheralsAndHandlers** function. The sets are also referenced when closing the peripheral and timer sets in the **ClosePeripheralsAndHandlers** function.
@@ -226,10 +226,10 @@ These sets are referenced when calling **OpenPeripheralSet**, and **StartTimerSe
 ```c
 static void InitPeripheralsAndHandlers(void)
 {
-	InitializeDevKit();  // Avnet Starter kit
+	lp_initializeDevKit();  // Avnet Starter kit
 
-	OpenPeripheralSet(peripheralSet, NELEMS(peripheralSet));
-	StartTimerSet(timerSet, NELEMS(timerSet));
+	lp_openPeripheralSet(peripheralSet, NELEMS(peripheralSet));
+	lp_startTimerSet(timerSet, NELEMS(timerSet));
 }
 ```
 
@@ -238,9 +238,9 @@ static void InitPeripheralsAndHandlers(void)
 This model makes it easy to declare another peripheral or timer and add them to the **peripheral** or **timer** sets. The following is an example of adding a GPIO output peripheral.
 
 ```c
-static Peripheral fanControl = {
+static LP_PERIPHERAL_GPIO fanControl = {
 	.pin = FAN1, // The GPIO pin number
-	.direction = OUTPUT, // for OUTPUT
+	.direction = LP_OUTPUT, // for OUTPUT
 	.initialState = GPIO_Value_Low,  // Set the initial state on the pin when opened
 	.invertPin = true,  // Should the switching logic be reverse for on/off, high/low
 	.initialise = OpenPeripheral,  // The function to be called to open the GPIO Pin
@@ -271,13 +271,23 @@ Ensure you have followed all the instructions in the [lab set-up guide](../Lab_0
 
 1. Click **Open a local folder**.
 2. Open the Azure-Sphere lab folder.
-3. Open the **folder name** that corresponds to your **Azure Sphere board**.
-4. Open the **Lab_1_Visual_Studio_and_Azure_Sphere** folder.
-5. Click **Select Folder** button to open the project.
+3. Open the **Lab_1_Visual_Studio_and_Azure_Sphere** folder.
+4. Click **Select Folder** button to open the project.
 
 ![](resources/visual-studio-open-project.png)
 
-### Step 4: Verify the Project Opened Correctly
+### Step 4: Select your developer board configuration
+
+Select the developer board. These labs supports developer boards from AVNET and Seeed Studio. You need to set the configuration that matches your developer board.
+
+1. Open CMakeList.txt
+2. The default board configuration is the AVNET board. If you are NOT using this board then add a # at the beginning of the AVNET line to disable.
+2. Uncomment the **set** command that corresponds to your Azure Sphere developer board.
+3. Save the file. This will auto generate the CMake cache.
+
+![](resources/cmakelist-set-board-configuration.png)
+
+### Step 5: Verify the Project Opened Correctly
 
 From the **Solution Explorer**, open the **main.c** file.
 
