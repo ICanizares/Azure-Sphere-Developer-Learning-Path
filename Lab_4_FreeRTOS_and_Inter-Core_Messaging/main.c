@@ -43,6 +43,9 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <time.h>
+#include <stdlib.h>
+#include <math.h>
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -54,21 +57,40 @@
 
 #include "semphr.h"
 
+
 #ifdef OEM_AVNET
-#include "../Hardware/avnet_mt3620_sk/inc/hw/azure_sphere_learning_path.h"
-#endif
+#include "lsm6dso_driver.h"
+#include "lsm6dso_reg.h"
+#include "i2c.h"
+#endif // OEM_AVNET
 
-#ifdef OEM_SEEED_STUDIO
-#include "../Hardware/mt3620_rdb/inc/hw/azure_sphere_learning_path.h"
-#endif
 
-#ifdef OEM_SEEED_STUDIO_MINI
-#include "../Hardware/seeed_mt3620_mdb/inc/hw/azure_sphere_learning_path.h"
-#endif
+#include "hw/azure_sphere_learning_path.h"
+
 
  /******************************************************************************/
  /* Configurations */
  /******************************************************************************/
+
+enum LP_INTER_CORE_CMD
+{
+	LP_IC_UNKNOWN,
+	LP_IC_HEARTBEAT,
+	LP_IC_TEMPERATURE_HUMIDITY,
+	LP_IC_EVENT_BUTTON_A,
+	LP_IC_EVENT_BUTTON_B,
+	LP_IC_SET_DESIRED_TEMPERATURE
+};
+
+typedef struct LP_INTER_CORE_BLOCK
+{
+	enum LP_INTER_CORE_CMD cmd;
+	float	temperature;
+	float	pressure;
+
+} LP_INTER_CORE_BLOCK;
+
+static LP_INTER_CORE_BLOCK ic_control_block;
 
 
 #define UART_PORT_NUM OS_HAL_UART_ISU0
@@ -76,7 +98,7 @@
 #define APP_STACK_SIZE_BYTES (1024 / 4)
 
 
-static const int blinkIntervalsMs[] = { 75, 125, 250, 500, 1000, 2000 };
+static const int blinkIntervalsMs[] = { 500, 1000 };
 static int blinkIntervalIndex = 0;
 static const int numBlinkIntervals = sizeof(blinkIntervalsMs) / sizeof(blinkIntervalsMs[0]);
 static SemaphoreHandle_t LEDSemphr;
@@ -88,10 +110,12 @@ static bool BuiltInLedOn = false;
 static const size_t payloadStart = 20;
 static uint8_t buf[256];
 static uint32_t dataSize;
-static bool buttonA_Pressed = false;
-static bool buttonB_Pressed = false;
 static BufferHeader* outbound, * inbound;
 static uint32_t sharedBufSize = 0;
+
+bool HLAppReady = false;
+int desired_temperature = 0.0;
+int last_temperature = 0;
 
 
 /******************************************************************************/
@@ -166,22 +190,33 @@ static int gpio_input(u8 gpio_no, os_hal_gpio_data* pvalue)
 	return 0;
 }
 
+void send_inter_core_msg(void)
+{
+	if (HLAppReady)
+	{
+		memcpy((void*)&buf[payloadStart], (void*)&ic_control_block, sizeof(ic_control_block));
+		dataSize = payloadStart + sizeof(ic_control_block);
+
+		EnqueueData(inbound, outbound, sharedBufSize, buf, dataSize);
+	}
+}
+
 static void ButtonTask(void* pParameters)
 {
 	static os_hal_gpio_data oldStateButtonA = OS_HAL_GPIO_DATA_LOW;
 	static os_hal_gpio_data oldStateButtonB = OS_HAL_GPIO_DATA_LOW;
 	os_hal_gpio_data value = 0;
 
-	printf("GPIO Task Started\n");
 	while (1)
 	{
-
 		// Get Button_A status
 		gpio_input(BUTTON_A, &value);
 		if ((value != oldStateButtonA) && (value == OS_HAL_GPIO_DATA_LOW))
 		{
-			buttonA_Pressed = true;
 			blinkIntervalIndex = (blinkIntervalIndex + 1) % numBlinkIntervals;
+
+			ic_control_block.cmd = LP_IC_EVENT_BUTTON_A;
+			send_inter_core_msg();
 		}
 		oldStateButtonA = value;
 
@@ -189,7 +224,8 @@ static void ButtonTask(void* pParameters)
 		gpio_input(BUTTON_B, &value);
 		if ((value != oldStateButtonB) && (value == OS_HAL_GPIO_DATA_LOW))
 		{
-			buttonB_Pressed = true;
+			ic_control_block.cmd = LP_IC_EVENT_BUTTON_B;
+			send_inter_core_msg();
 		}
 		oldStateButtonB = value;
 
@@ -197,31 +233,6 @@ static void ButtonTask(void* pParameters)
 		vTaskDelay(pdMS_TO_TICKS(100));
 	}
 }
-
-#ifdef OEM_SEEED_STUDIO_MINI
-static void VirtualButtonTask(void* pParameters)
-{
-	static bool toggle = false;
-	printf("Button Task Started\n");
-
-	while (1)
-	{
-		if (toggle)
-		{
-			blinkIntervalIndex = (blinkIntervalIndex + 1) % numBlinkIntervals;
-			buttonA_Pressed = true;
-		}
-		else
-		{
-			buttonB_Pressed = true;
-		}
-
-		toggle = !toggle;
-
-		vTaskDelay(pdMS_TO_TICKS(10000));	// 10 seconds
-	}
-}
-#endif
 
 static void PeriodicTask(void* pParameters)
 {
@@ -242,44 +253,86 @@ static void LedTask(void* pParameters)
 		if (rt == pdPASS)
 		{
 			BuiltInLedOn = !BuiltInLedOn;
-			gpio_output(LED1, BuiltInLedOn);
+			gpio_output(LED2, BuiltInLedOn);
 		}
 	}
 }
 
+void SetTemperatureStatus(int temperature)
+{
+	gpio_output(LED_RED, 1);
+	gpio_output(LED_GREEN, 1);
+	gpio_output(LED_BLUE, 1);
+
+	if (temperature == desired_temperature)
+	{
+		gpio_output(LED_GREEN, 0);
+	}
+
+	if (temperature < desired_temperature)
+	{
+		gpio_output(LED_BLUE, 0);
+	}
+
+	if (temperature > desired_temperature)
+	{
+		gpio_output(LED_RED, 0);
+	}
+}
+
+
 static void RTCoreMsgTask(void* pParameters)
 {
-	bool HLAppReady = false;
+
+#ifdef OEM_AVNET
+	mtk_os_hal_i2c_ctrl_init(i2c_port_num);		// Initialize MT3620 I2C bus
+	i2c_enum();									// Enumerate I2C Bus
+	i2c_init();
+	lsm6dso_init(i2c_write, i2c_read);
+#endif // OEM_AVNET
 
 	while (1)
 	{
 		dataSize = sizeof(buf);
 		int r = DequeueData(outbound, inbound, sharedBufSize, buf, &dataSize);
 
-		//if (!(r == -1 || dataSize < payloadStart)) {
 		if (r == 0 && dataSize > payloadStart)
 		{
 			HLAppReady = true;
-		}
 
-		if (buttonA_Pressed && HLAppReady)
-		{
-			const char msg[] = "ButtonA";
-			strncpy((char*)buf + payloadStart, msg, sizeof buf - payloadStart);
-			dataSize = payloadStart + sizeof msg - 1;
+			memcpy((void*)&ic_control_block, (void*)&buf[payloadStart], sizeof(ic_control_block));
 
-			EnqueueData(inbound, outbound, sharedBufSize, buf, dataSize);
-			buttonA_Pressed = false;
-		}
+			switch (ic_control_block.cmd)
+			{
+			case LP_IC_HEARTBEAT:
+				break;
+			case LP_IC_SET_DESIRED_TEMPERATURE:
+				desired_temperature = round(ic_control_block.temperature);
+				SetTemperatureStatus(last_temperature);
+				break;
+			case LP_IC_TEMPERATURE_HUMIDITY:
 
-		if (buttonB_Pressed && HLAppReady)
-		{
-			const char msg[] = "ButtonB";
-			strncpy((char*)buf + payloadStart, msg, sizeof buf - payloadStart);
-			dataSize = payloadStart + sizeof msg - 1;
+#ifdef OEM_AVNET
+				ic_control_block.cmd = LP_IC_TEMPERATURE_HUMIDITY;
+				ic_control_block.temperature = get_temperature();
+				ic_control_block.pressure = 1020.0;
+#endif // OEM_AVNET
 
-			EnqueueData(inbound, outbound, sharedBufSize, buf, dataSize);
-			buttonB_Pressed = false;
+#ifdef OEM_SEEED_STUDIO
+				ic_control_block.cmd = LP_IC_TEMPERATURE_HUMIDITY;
+				ic_control_block.temperature = 22;
+				ic_control_block.pressure = 1019;
+#endif // OEM_SEEED_STUDIO
+
+				send_inter_core_msg();
+
+				last_temperature = round(ic_control_block.temperature);
+				SetTemperatureStatus(last_temperature);
+
+				break;
+			default:
+				break;
+			}
 		}
 
 		// Delay for 100ms
@@ -306,16 +359,14 @@ _Noreturn void RTCoreMain(void)
 		}
 	}
 
+
+
+
 	LEDSemphr = xSemaphoreCreateBinary();
 
 	xTaskCreate(PeriodicTask, "Periodic Task", APP_STACK_SIZE_BYTES, NULL, 6, NULL);
 	xTaskCreate(LedTask, "LED Task", APP_STACK_SIZE_BYTES, NULL, 5, NULL);
 	xTaskCreate(ButtonTask, "GPIO Task", APP_STACK_SIZE_BYTES, NULL, 4, NULL);
-
-	#ifdef OEM_SEEED_STUDIO_MINI
-	xTaskCreate(VirtualButtonTask, "GPIO Task", APP_STACK_SIZE_BYTES, NULL, 4, NULL);
-	#endif
-
 	xTaskCreate(RTCoreMsgTask, "RTCore Msg Task", APP_STACK_SIZE_BYTES, NULL, 2, NULL);
 	vTaskStartScheduler();
 

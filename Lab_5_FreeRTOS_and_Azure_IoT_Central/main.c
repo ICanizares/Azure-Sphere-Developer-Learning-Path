@@ -52,7 +52,7 @@
 #include <time.h>
 
 
-// Hardware specific
+ // Hardware specific
 
 #ifdef OEM_AVNET
 #include "learning_path_libs/AVNET/board.h"
@@ -72,15 +72,14 @@ static void ClosePeripheralGpiosAndHandlers(void);
 static void Led2OffHandler(EventLoopTimer* eventLoopTimer);
 static void MeasureSensorHandler(EventLoopTimer* eventLoopTimer);
 static void NetworkConnectionStatusHandler(EventLoopTimer* eventLoopTimer);
-static void ResetDeviceHandler(EventLoopTimer* eventLoopTimer);
-static void DeviceTwinRelay1RateHandler(LP_DEVICE_TWIN_BINDING* deviceTwinBinding);
-static LP_DirectMethodResponseCode ResetDirectMethodHandler(JSON_Object* json, LP_DIRECT_METHOD_BINDING* directMethodBinding, char** responseMsg);
-static void InterCoreHandler(char* msg);
-static void RealTimeCoreHeartBeat(EventLoopTimer* eventLoopTimer);
+static void InterCoreHandler(LP_INTER_CORE_BLOCK* ic_message_block);
+static void DeviceTwinSetTemperatureHandler(LP_DEVICE_TWIN_BINDING* deviceTwinBinding);
 
 static char msgBuffer[JSON_MESSAGE_BYTES] = { 0 };
 static const char cstrJsonEvent[] = "{\"%s\":\"occurred\"}";
 static const struct timespec led2BlinkPeriod = { 0, 300 * 1000 * 1000 };
+LP_INTER_CORE_BLOCK ic_control_block;
+
 
 // GPIO Output PeripheralGpios
 static LP_PERIPHERAL_GPIO led2 = { .pin = LED2, .direction = LP_OUTPUT, .initialState = GPIO_Value_Low, .invertPin = true,
@@ -89,60 +88,22 @@ static LP_PERIPHERAL_GPIO led2 = { .pin = LED2, .direction = LP_OUTPUT, .initial
 static LP_PERIPHERAL_GPIO networkConnectedLed = { .pin = NETWORK_CONNECTED_LED, .direction = LP_OUTPUT, .initialState = GPIO_Value_Low, .invertPin = true,
 	.initialise = lp_openPeripheralGpio, .name = "networkConnectedLed" };
 
-static LP_PERIPHERAL_GPIO relay1 = { .pin = RELAY, .direction = LP_OUTPUT, .initialState = GPIO_Value_Low, .invertPin = false,
-	.initialise = lp_openPeripheralGpio, .name = "relay1" };
-
 // Timers
 static LP_TIMER led2BlinkOffOneShotTimer = { .period = { 0, 0 }, .name = "led2BlinkOffOneShotTimer", .handler = Led2OffHandler };
 static LP_TIMER networkConnectionStatusTimer = { .period = { 5, 0 }, .name = "networkConnectionStatusTimer", .handler = NetworkConnectionStatusHandler };
 static LP_TIMER measureSensorTimer = { .period = { 10, 0 }, .name = "measureSensorTimer", .handler = MeasureSensorHandler };
-static LP_TIMER resetDeviceOneShotTimer = { .period = { 0, 0 }, .name = "resetDeviceOneShotTimer", .handler = ResetDeviceHandler };
-static LP_TIMER realTimeCoreHeatBeatTimer = { .period = { 30, 0 }, .name = "rtCoreSend", .handler = RealTimeCoreHeartBeat };
 
 // Azure IoT Device Twins
 static LP_DEVICE_TWIN_BINDING buttonPressed = { .twinProperty = "ButtonPressed", .twinType = LP_TYPE_STRING };
-static LP_DEVICE_TWIN_BINDING relay1DeviceTwin = { .twinProperty = "Relay1", .twinType = LP_TYPE_BOOL, .handler = DeviceTwinRelay1RateHandler };
-static LP_DEVICE_TWIN_BINDING deviceResetUtc = { .twinProperty = "DeviceResetUTC", .twinType = LP_TYPE_STRING };
+static LP_DEVICE_TWIN_BINDING desiredTemperature = { .twinProperty = "DesiredTemperature", .twinType = LP_TYPE_FLOAT, .handler = DeviceTwinSetTemperatureHandler };
 
-// Azure IoT Direct Methods
-static LP_DIRECT_METHOD_BINDING resetDevice = { .methodName = "ResetMethod", .handler = ResetDirectMethodHandler };
 
 // Initialize Sets
-LP_PERIPHERAL_GPIO* peripheralGpioSet[] = { &led2, &networkConnectedLed, &relay1 };
-LP_TIMER* timerSet[] = { &led2BlinkOffOneShotTimer, &networkConnectionStatusTimer, &resetDeviceOneShotTimer, &measureSensorTimer, &realTimeCoreHeatBeatTimer };
-LP_DEVICE_TWIN_BINDING* deviceTwinBindingSet[] = { &buttonPressed, &relay1DeviceTwin };
-LP_DIRECT_METHOD_BINDING* directMethodBindingSet[] = { &resetDevice };
+LP_PERIPHERAL_GPIO* peripheralGpioSet[] = { &networkConnectedLed, &led2 };
+LP_TIMER* timerSet[] = { &led2BlinkOffOneShotTimer, &networkConnectionStatusTimer, &measureSensorTimer };
+LP_DEVICE_TWIN_BINDING* deviceTwinBindingSet[] = { &buttonPressed, &desiredTemperature };
 
 
-int main(int argc, char* argv[])
-{
-	lp_registerTerminationHandler();
-	lp_processCmdArgs(argc, argv);
-
-	if (strlen(scopeId) == 0)
-	{
-		Log_Debug("ScopeId needs to be set in the app_manifest CmdArgs\n");
-		return ExitCode_Missing_ID_Scope;
-	}
-
-	InitPeripheralGpiosAndHandlers();
-
-	// Main loop
-	while (!lp_isTerminationRequired())
-	{
-		int result = EventLoop_Run(lp_getTimerEventLoop(), -1, true);
-		// Continue if interrupted by signal, e.g. due to breakpoint being set.
-		if (result == -1 && errno != EINTR)
-		{
-			lp_terminate(ExitCode_Main_EventLoopFail);
-		}
-	}
-
-	ClosePeripheralGpiosAndHandlers();
-
-	Log_Debug("Application exiting.\n");
-	return lp_getTerminationExitCode();
-}
 
 /// <summary>
 /// Check status of connection to Azure IoT
@@ -163,6 +124,13 @@ static void NetworkConnectionStatusHandler(EventLoopTimer* eventLoopTimer)
 	{
 		lp_gpioOff(&networkConnectedLed);
 	}
+}
+
+static void DeviceTwinSetTemperatureHandler(LP_DEVICE_TWIN_BINDING* deviceTwinBinding)
+{
+	ic_control_block.cmd = LP_IC_SET_DESIRED_TEMPERATURE;
+	ic_control_block.temperature = *(float*)deviceTwinBinding->twinState;
+	lp_sendInterCoreMessage(&ic_control_block, sizeof(ic_control_block));
 }
 
 /// <summary>
@@ -199,121 +167,42 @@ static void MeasureSensorHandler(EventLoopTimer* eventLoopTimer)
 		lp_terminate(ExitCode_ConsumeEventLoopTimeEvent);
 		return;
 	}
-	if (lp_readTelemetry(msgBuffer, JSON_MESSAGE_BYTES) > 0)
-	{
-		SendMsgLed2On(msgBuffer);
-	}
+
+	// send request to Real-Time core app to read temperature and pressure
+	ic_control_block.cmd = LP_IC_TEMPERATURE_HUMIDITY;
+	lp_sendInterCoreMessage(&ic_control_block, sizeof(ic_control_block));
 }
 
-/// <summary>
-/// Set Relay state using Device Twin "Relay1": {"value": true },
-/// </summary>
-static void DeviceTwinRelay1RateHandler(LP_DEVICE_TWIN_BINDING* deviceTwinBinding)
-{
-	switch (deviceTwinBinding->twinType)
-	{
-	case LP_TYPE_BOOL:
-		Log_Debug("\nBool Value '%d'\n", *(bool*)deviceTwinBinding->twinState);
-		if (*(bool*)deviceTwinBinding->twinState)
-		{
-			lp_gpioOn(&relay1);
-		}
-		else
-		{
-			lp_gpioOff(&relay1);
-		}
-		break;
-	case LP_TYPE_INT:
-	case LP_TYPE_FLOAT:
-	case LP_TYPE_STRING:
-	case LP_TYPE_UNKNOWN:
-		break;
-	}
-}
-
-/// <summary>
-/// Reset the Device
-/// </summary>
-static void ResetDeviceHandler(EventLoopTimer* eventLoopTimer)
-{
-	if (ConsumeEventLoopTimerEvent(eventLoopTimer) != 0)
-	{
-		lp_terminate(ExitCode_ConsumeEventLoopTimeEvent);
-		return;
-	}
-	PowerManagement_ForceSystemReboot();
-}
-
-/// <summary>
-/// Start Device Power Restart Direct Method 'ResetMethod' {"reset_timer":5}
-/// </summary>
-static LP_DirectMethodResponseCode ResetDirectMethodHandler(JSON_Object* json, LP_DIRECT_METHOD_BINDING* directMethodBinding, char** responseMsg)
-{
-	const char propertyName[] = "reset_timer";
-	const size_t responseLen = 60; // Allocate and initialize a response message buffer. The calling function is responsible for the freeing memory
-	static struct timespec period;
-
-	*responseMsg = (char*)malloc(responseLen);
-	memset(*responseMsg, 0, responseLen);
-
-	if (!json_object_has_value_of_type(json, propertyName, JSONNumber))
-	{
-		return LP_METHOD_FAILED;
-	}
-	int seconds = (int)json_object_get_number(json, propertyName);
-
-	if (seconds > 0 && seconds < 10)
-	{
-
-		// Report Device Reset UTC
-		lp_deviceTwinReportState(&deviceResetUtc, lp_getCurrentUtc(msgBuffer, sizeof(msgBuffer)));			// TYPE_STRING
-
-		// Create Direct Method Response
-		snprintf(*responseMsg, responseLen, "%s called. Reset in %d seconds", directMethodBinding->methodName, seconds);
-
-		// Set One Shot LP_TIMER
-		period = (struct timespec){ .tv_sec = seconds, .tv_nsec = 0 };
-		lp_setOneShotTimer(&resetDeviceOneShotTimer, &period);
-
-		return LP_METHOD_SUCCEEDED;
-	}
-	else
-	{
-		snprintf(*responseMsg, responseLen, "%s called. Reset Failed. Seconds out of range: %d", directMethodBinding->methodName, seconds);
-		return LP_METHOD_FAILED;
-	}
-}
 
 /// <summary>
 /// Callback handler for Inter-Core Messaging - Does Device Twin Update, and Event Message
 /// </summary>
-static void InterCoreHandler(char* msg)
+static void InterCoreHandler(LP_INTER_CORE_BLOCK* ic_message_block)
 {
-	lp_deviceTwinReportState(&buttonPressed, msg);					// TwinType = TYPE_STRING
+	static const char* msgTemplate = "{ \"Temperature\": \"%3.2f\", \"Pressure\":\"%3.1f\", \"MsgId\":%d }";
+	static msgId = 0;
+	int len = 0;
 
-	if (snprintf(msgBuffer, JSON_MESSAGE_BYTES, cstrJsonEvent, msg) > 0)
+	switch (ic_message_block->cmd)
+	{
+	case LP_IC_EVENT_BUTTON_A:
+		len = snprintf(msgBuffer, JSON_MESSAGE_BYTES, cstrJsonEvent, "ButtonA");
+		lp_deviceTwinReportState(&buttonPressed, "ButtonA");					// TwinType = TYPE_STRING
+		break;
+	case LP_IC_EVENT_BUTTON_B:
+		len = snprintf(msgBuffer, JSON_MESSAGE_BYTES, cstrJsonEvent, "ButtonB");
+		lp_deviceTwinReportState(&buttonPressed, "ButtonB");					// TwinType = TYPE_STRING
+		break;
+	case LP_IC_TEMPERATURE_HUMIDITY:
+		len = snprintf(msgBuffer, JSON_MESSAGE_BYTES, msgTemplate, ic_message_block->temperature, ic_message_block->pressure, msgId++);
+		break;
+	default:
+		break;
+	}
+
+	if (len > 0)
 	{
 		SendMsgLed2On(msgBuffer);
-	}
-}
-
-/// <summary>
-/// Real Time Inter-Core Heartbeat - primarily sends HL Component ID to RT core to enable secure messaging
-/// </summary>
-static void RealTimeCoreHeartBeat(EventLoopTimer* eventLoopTimer)
-{
-	static int heartBeatCount = 0;
-	char interCoreMsg[30];
-
-	if (ConsumeEventLoopTimerEvent(eventLoopTimer) != 0)
-	{
-		lp_terminate(ExitCode_ConsumeEventLoopTimeEvent);
-		return;
-	}
-
-	if (snprintf(interCoreMsg, sizeof(interCoreMsg), "HeartBeat-%d", heartBeatCount++) > 0)
-	{
-		lp_sendInterCoreMessage(interCoreMsg);
 	}
 }
 
@@ -323,17 +212,16 @@ static void RealTimeCoreHeartBeat(EventLoopTimer* eventLoopTimer)
 /// <returns>0 on success, or -1 on failure</returns>
 static void InitPeripheralGpiosAndHandlers(void)
 {
-	lp_initializeDevKit();
-
 	lp_openPeripheralGpioSet(peripheralGpioSet, NELEMS(peripheralGpioSet));
 	lp_openDeviceTwinSet(deviceTwinBindingSet, NELEMS(deviceTwinBindingSet));
-	lp_openDirectMethodSet(directMethodBindingSet, NELEMS(directMethodBindingSet));
 
 	lp_startTimerSet(timerSet, NELEMS(timerSet));
 	lp_startCloudToDevice();
 
 	lp_enableInterCoreCommunications(rtAppComponentId, InterCoreHandler);  // Initialize Inter Core Communications
-	lp_sendInterCoreMessage("HeartBeat"); // Prime RT Core with Component ID Signature
+
+	ic_control_block.cmd = LP_IC_HEARTBEAT;		// Prime RT Core with Component ID Signature
+	lp_sendInterCoreMessage(&ic_control_block, sizeof(ic_control_block));
 }
 
 /// <summary>
@@ -348,9 +236,38 @@ static void ClosePeripheralGpiosAndHandlers(void)
 
 	lp_closePeripheralGpioSet();
 	lp_closeDeviceTwinSet();
-	lp_closeDirectMethodSet();
 
 	lp_closeDevKit();
 
 	lp_stopTimerEventLoop();
+}
+
+int main(int argc, char* argv[])
+{
+	lp_registerTerminationHandler();
+	lp_processCmdArgs(argc, argv);
+
+	if (strlen(scopeId) == 0)
+	{
+		Log_Debug("ScopeId needs to be set in the app_manifest CmdArgs\n");
+		return ExitCode_Missing_ID_Scope;
+	}
+
+	InitPeripheralGpiosAndHandlers();
+
+	// Main loop
+	while (!lp_isTerminationRequired())
+	{
+		int result = EventLoop_Run(lp_getTimerEventLoop(), -1, true);
+		// Continue if interrupted by signal, e.g. due to breakpoint being set.
+		if (result == -1 && errno != EINTR)
+		{
+			lp_terminate(ExitCode_Main_EventLoopFail);
+		}
+	}
+
+	ClosePeripheralGpiosAndHandlers();
+
+	Log_Debug("Application exiting.\n");
+	return lp_getTerminationExitCode();
 }
