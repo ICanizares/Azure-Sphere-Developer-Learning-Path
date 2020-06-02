@@ -85,7 +85,7 @@ Your Azure Sphere device can securely connect and communicate with cloud service
 
 **SETTING UP IOT HUB AND DEVICE PROVISIONING**
 
-
+[Set up an Azure IoT Hub for Azure Sphere](https://docs.microsoft.com/en-us/azure-sphere/app-development/setup-iot-hub)
 ---
 
 ## Step 4: Whitelist the Azure IoT Hub and Device Provisioning Endpoints
