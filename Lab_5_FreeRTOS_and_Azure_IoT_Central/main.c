@@ -77,7 +77,7 @@ static void DeviceTwinSetTemperatureHandler(LP_DEVICE_TWIN_BINDING* deviceTwinBi
 
 static char msgBuffer[JSON_MESSAGE_BYTES] = { 0 };
 static const char cstrJsonEvent[] = "{\"%s\":\"occurred\"}";
-static const struct timespec led2BlinkPeriod = { 0, 300 * 1000 * 1000 };
+static const struct timespec led2BlinkPeriod = { 0, 500 * 1000 * 1000 };
 LP_INTER_CORE_BLOCK ic_control_block;
 
 
@@ -97,12 +97,10 @@ static LP_TIMER measureSensorTimer = { .period = { 10, 0 }, .name = "measureSens
 static LP_DEVICE_TWIN_BINDING buttonPressed = { .twinProperty = "ButtonPressed", .twinType = LP_TYPE_STRING };
 static LP_DEVICE_TWIN_BINDING desiredTemperature = { .twinProperty = "DesiredTemperature", .twinType = LP_TYPE_FLOAT, .handler = DeviceTwinSetTemperatureHandler };
 
-
 // Initialize Sets
 LP_PERIPHERAL_GPIO* peripheralGpioSet[] = { &networkConnectedLed, &led2 };
 LP_TIMER* timerSet[] = { &led2BlinkOffOneShotTimer, &networkConnectionStatusTimer, &measureSensorTimer };
 LP_DEVICE_TWIN_BINDING* deviceTwinBindingSet[] = { &buttonPressed, &desiredTemperature };
-
 
 
 /// <summary>
@@ -126,6 +124,9 @@ static void NetworkConnectionStatusHandler(EventLoopTimer* eventLoopTimer)
 	}
 }
 
+/// <summary>
+/// Device Twin Handler to set the desired temperature value on the Real-Time Core
+/// </summary>
 static void DeviceTwinSetTemperatureHandler(LP_DEVICE_TWIN_BINDING* deviceTwinBinding)
 {
 	ic_control_block.cmd = LP_IC_SET_DESIRED_TEMPERATURE;
@@ -168,19 +169,18 @@ static void MeasureSensorHandler(EventLoopTimer* eventLoopTimer)
 		return;
 	}
 
-	// send request to Real-Time core app to read temperature and pressure
-	ic_control_block.cmd = LP_IC_TEMPERATURE_HUMIDITY;
+	// send request to Real-Time core app to read temperature, pressure, and humidity
+	ic_control_block.cmd = LP_IC_TEMPERATURE_PRESSURE_HUMIDITY;
 	lp_sendInterCoreMessage(&ic_control_block, sizeof(ic_control_block));
 }
-
 
 /// <summary>
 /// Callback handler for Inter-Core Messaging - Does Device Twin Update, and Event Message
 /// </summary>
 static void InterCoreHandler(LP_INTER_CORE_BLOCK* ic_message_block)
 {
-	static const char* msgTemplate = "{ \"Temperature\": \"%3.2f\", \"Pressure\":\"%3.1f\", \"MsgId\":%d }";
-	static msgId = 0;
+	static const char* msgTemplate = "{ \"Temperature\": \"%3.2f\", \"Humidity\": \"%3.1f\", \"Pressure\":\"%3.1f\", \"Light\":%d, \"MsgId\":%d }";
+	static int msgId = 0;
 	int len = 0;
 
 	switch (ic_message_block->cmd)
@@ -193,8 +193,8 @@ static void InterCoreHandler(LP_INTER_CORE_BLOCK* ic_message_block)
 		len = snprintf(msgBuffer, JSON_MESSAGE_BYTES, cstrJsonEvent, "ButtonB");
 		lp_deviceTwinReportState(&buttonPressed, "ButtonB");					// TwinType = TYPE_STRING
 		break;
-	case LP_IC_TEMPERATURE_HUMIDITY:
-		len = snprintf(msgBuffer, JSON_MESSAGE_BYTES, msgTemplate, ic_message_block->temperature, ic_message_block->pressure, msgId++);
+	case LP_IC_TEMPERATURE_PRESSURE_HUMIDITY:
+		len = snprintf(msgBuffer, JSON_MESSAGE_BYTES, msgTemplate, ic_message_block->temperature, ic_message_block->humidity, ic_message_block->pressure, 0, msgId++);
 		break;
 	default:
 		break;
@@ -236,8 +236,6 @@ static void ClosePeripheralGpiosAndHandlers(void)
 
 	lp_closePeripheralGpioSet();
 	lp_closeDeviceTwinSet();
-
-	lp_closeDevKit();
 
 	lp_stopTimerEventLoop();
 }

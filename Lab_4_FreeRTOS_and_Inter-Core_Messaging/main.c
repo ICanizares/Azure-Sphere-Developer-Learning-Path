@@ -76,7 +76,7 @@ enum LP_INTER_CORE_CMD
 {
 	LP_IC_UNKNOWN,
 	LP_IC_HEARTBEAT,
-	LP_IC_TEMPERATURE_HUMIDITY,
+	LP_IC_TEMPERATURE_PRESSURE_HUMIDITY,
 	LP_IC_EVENT_BUTTON_A,
 	LP_IC_EVENT_BUTTON_B,
 	LP_IC_SET_DESIRED_TEMPERATURE
@@ -87,22 +87,20 @@ typedef struct LP_INTER_CORE_BLOCK
 	enum LP_INTER_CORE_CMD cmd;
 	float	temperature;
 	float	pressure;
+	float	humidity;
 
 } LP_INTER_CORE_BLOCK;
 
 static LP_INTER_CORE_BLOCK ic_control_block;
 
-
 #define UART_PORT_NUM OS_HAL_UART_ISU0
-
 #define APP_STACK_SIZE_BYTES (1024 / 4)
 
 
-static const int blinkIntervalsMs[] = { 500, 1000 };
-static int blinkIntervalIndex = 0;
+static const int blinkIntervalsMs[] = { 250, 500, 1000 };
+static int blinkIntervalIndex = 1;
 static const int numBlinkIntervals = sizeof(blinkIntervalsMs) / sizeof(blinkIntervalsMs[0]);
 static SemaphoreHandle_t LEDSemphr;
-static bool BuiltInLedOn = false;
 
 
 // Inter-core Communications
@@ -116,6 +114,17 @@ static uint32_t sharedBufSize = 0;
 bool HLAppReady = false;
 int desired_temperature = 0.0;
 int last_temperature = 0;
+
+enum LEDS
+{
+	RED,
+	GREEN,
+	BLUE
+};
+
+static enum LEDS current_led = RED;
+static int leds[] = { LED_RED, LED_GREEN, LED_BLUE };
+static bool led_state[] = { false, false, false };
 
 
 /******************************************************************************/
@@ -190,6 +199,35 @@ static int gpio_input(u8 gpio_no, os_hal_gpio_data* pvalue)
 	return 0;
 }
 
+//https://embeddedartistry.com/blog/2018/01/15/implementing-malloc-with-freertos/
+
+/*
+malloc and free overrides are here to support srand and rand for random number generator for fake telemetry
+srand and rand call malloc to allocate 24 bytes on the heap and this override directs mallow to pull memory from the FreeRTOS heap
+*/
+
+void* malloc(size_t size)
+{
+	void* ptr = NULL;
+
+	if (size > 0)
+	{
+		// We simply wrap the FreeRTOS call into a standard form
+		ptr = pvPortMalloc(size);
+	} // else NULL if there was an error
+
+	return ptr;
+}
+
+void free(void* ptr)
+{
+	if (ptr)
+	{
+		// We simply wrap the FreeRTOS call into a standard form
+		vPortFree(ptr);
+	}
+}
+
 void send_inter_core_msg(void)
 {
 	if (HLAppReady)
@@ -234,8 +272,13 @@ static void ButtonTask(void* pParameters)
 	}
 }
 
-static void PeriodicTask(void* pParameters)
+static void SetLedBlinkRateTask(void* pParameters)
 {
+	// ensure LEDs are turned off
+	gpio_output(LED_RED, true);
+	gpio_output(LED_GREEN, true);
+	gpio_output(LED_BLUE, true);
+
 	while (1)
 	{
 		vTaskDelay(pdMS_TO_TICKS(blinkIntervalsMs[blinkIntervalIndex]));
@@ -246,56 +289,61 @@ static void PeriodicTask(void* pParameters)
 static void LedTask(void* pParameters)
 {
 	BaseType_t rt;
+	static enum LEDS previous_led = RED;
 
 	while (1)
 	{
 		rt = xSemaphoreTake(LEDSemphr, portMAX_DELAY);
 		if (rt == pdPASS)
 		{
-			BuiltInLedOn = !BuiltInLedOn;
-			gpio_output(LED2, BuiltInLedOn);
+			if (previous_led != current_led)
+			{
+				gpio_output(leds[(int)previous_led], true); // turn off old current colour
+				previous_led = current_led;
+			}
+
+			led_state[(int)current_led] = !led_state[(int)current_led];
+			gpio_output(leds[(int)current_led], led_state[(int)current_led]);
 		}
 	}
 }
 
 void SetTemperatureStatus(int temperature)
 {
-	gpio_output(LED_RED, 1);
-	gpio_output(LED_GREEN, 1);
-	gpio_output(LED_BLUE, 1);
-
 	if (temperature == desired_temperature)
 	{
-		gpio_output(LED_GREEN, 0);
+		current_led = GREEN;
 	}
 
 	if (temperature < desired_temperature)
 	{
-		gpio_output(LED_BLUE, 0);
+		current_led = BLUE;
 	}
 
 	if (temperature > desired_temperature)
 	{
-		gpio_output(LED_RED, 0);
+		current_led = RED;
 	}
 }
 
-
 static void RTCoreMsgTask(void* pParameters)
 {
+	int rand_number;
 
 #ifdef OEM_AVNET
 	mtk_os_hal_i2c_ctrl_init(i2c_port_num);		// Initialize MT3620 I2C bus
 	i2c_enum();									// Enumerate I2C Bus
 	i2c_init();
 	lsm6dso_init(i2c_write, i2c_read);
-#endif // OEM_AVNET
+#endif // OEM_AVNET	
+
+	srand((unsigned int)time(NULL)); // seed the random number generator for fake telemetry
 
 	while (1)
 	{
 		dataSize = sizeof(buf);
 		int r = DequeueData(outbound, inbound, sharedBufSize, buf, &dataSize);
-
+		
 		if (r == 0 && dataSize > payloadStart)
 		{
 			HLAppReady = true;
@@ -310,18 +358,27 @@ static void RTCoreMsgTask(void* pParameters)
 				desired_temperature = round(ic_control_block.temperature);
 				SetTemperatureStatus(last_temperature);
 				break;
-			case LP_IC_TEMPERATURE_HUMIDITY:
+			case LP_IC_TEMPERATURE_PRESSURE_HUMIDITY:
 
 #ifdef OEM_AVNET
+
 				ic_control_block.cmd = LP_IC_TEMPERATURE_HUMIDITY;
 				ic_control_block.temperature = get_temperature();
 				ic_control_block.pressure = 1020.0;
+
 #endif // OEM_AVNET
 
 #ifdef OEM_SEEED_STUDIO
-				ic_control_block.cmd = LP_IC_TEMPERATURE_HUMIDITY;
-				ic_control_block.temperature = 22;
-				ic_control_block.pressure = 1019;
+
+				ic_control_block.cmd = LP_IC_TEMPERATURE_PRESSURE_HUMIDITY;
+
+				rand_number = (rand() % 10) - 5;
+				ic_control_block.temperature = (float)(25.0 + rand_number);
+				ic_control_block.humidity = (float)(50.0 + rand_number);
+
+				rand_number = (rand() % 50) - 25;
+				ic_control_block.pressure = (float)(1000.0 + rand_number);				
+
 #endif // OEM_SEEED_STUDIO
 
 				send_inter_core_msg();
@@ -359,12 +416,9 @@ _Noreturn void RTCoreMain(void)
 		}
 	}
 
-
-
-
 	LEDSemphr = xSemaphoreCreateBinary();
 
-	xTaskCreate(PeriodicTask, "Periodic Task", APP_STACK_SIZE_BYTES, NULL, 6, NULL);
+	xTaskCreate(SetLedBlinkRateTask, "Periodic Task", APP_STACK_SIZE_BYTES, NULL, 6, NULL);
 	xTaskCreate(LedTask, "LED Task", APP_STACK_SIZE_BYTES, NULL, 5, NULL);
 	xTaskCreate(ButtonTask, "GPIO Task", APP_STACK_SIZE_BYTES, NULL, 4, NULL);
 	xTaskCreate(RTCoreMsgTask, "RTCore Msg Task", APP_STACK_SIZE_BYTES, NULL, 2, NULL);
